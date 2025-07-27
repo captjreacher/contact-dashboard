@@ -1,8 +1,4 @@
 import os
-import sys
-# DON'T CHANGE THIS !!!
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 from src.models.models import db, Contact, UploadBatch, ValidationRule, Campaign, CampaignResult, CampaignJob, SampleRequest, AuditLog
@@ -35,6 +31,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
 with app.app_context():
+    # Create the database directory if it doesn't exist
+    db_dir = os.path.join(os.path.dirname(__file__), 'database')
+    os.makedirs(db_dir, exist_ok=True)
     db.create_all()
 
 @app.teardown_appcontext
