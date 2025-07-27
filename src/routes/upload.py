@@ -247,10 +247,12 @@ def upload_file():
                 'duplicate_records': result['duplicate_records']
             })
         else:
+            batch = UploadBatch.query.get(batch_id)
             return jsonify({
                 'success': False,
                 'batch_id': batch_id,
-                'error': result['error']
+                'error': 'Processing failed',
+                'processing_errors': json.loads(batch.processing_errors) if batch.processing_errors else []
             }), 500
             
     except Exception as e:
@@ -281,6 +283,33 @@ def get_upload_status(batch_id):
             }
         })
         
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@upload_bp.route('/upload/<batch_id>/errors', methods=['GET'])
+def get_upload_errors(batch_id):
+    """Get detailed validation errors for a batch"""
+    try:
+        batch = UploadBatch.query.get(batch_id)
+        if not batch:
+            return jsonify({'success': False, 'error': 'Batch not found'}), 404
+
+        errors = []
+        contacts = Contact.query.filter_by(upload_batch_id=batch_id, validation_status='invalid').all()
+
+        for contact in contacts:
+            errors.append({
+                'line_number': contact.id,  # Or some other way to identify the row
+                'email_address': contact.email_address,
+                'errors': json.loads(contact.validation_errors)
+            })
+
+        return jsonify({
+            'success': True,
+            'batch_id': batch_id,
+            'errors': errors
+        })
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
