@@ -22,27 +22,30 @@ def validate_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return re.match(pattern, email) is not None
 
+import phonenumbers
+
 def validate_phone(phone):
-    """Validate and standardize phone number"""
+    """Validate and standardize phone number using phonenumbers library"""
     if not phone:
         return True, phone
     
-    # Remove all non-digit characters
-    digits_only = re.sub(r'\D', '', phone)
-    
-    # Check if it's a valid length (7-15 digits)
-    if len(digits_only) < 7 or len(digits_only) > 15:
+    try:
+        # Parse the phone number
+        parsed_number = phonenumbers.parse(phone, None)
+
+        # Check if the number is valid
+        if not phonenumbers.is_valid_number(parsed_number):
+            return False, phone
+
+        # Format the number in E.164 format
+        formatted_number = phonenumbers.format_number(
+            parsed_number, phonenumbers.PhoneNumberFormat.E164
+        )
+
+        return True, formatted_number
+
+    except phonenumbers.phonenumberutil.NumberParseException:
         return False, phone
-    
-    # Format as +1-XXX-XXX-XXXX for US numbers (10 digits)
-    if len(digits_only) == 10:
-        formatted = f"+1-{digits_only[:3]}-{digits_only[3:6]}-{digits_only[6:]}"
-        return True, formatted
-    elif len(digits_only) == 11 and digits_only.startswith('1'):
-        formatted = f"+1-{digits_only[1:4]}-{digits_only[4:7]}-{digits_only[7:]}"
-        return True, formatted
-    
-    return True, phone
 
 def validate_required_fields(row):
     """Validate required fields"""
@@ -82,8 +85,9 @@ def validate_contact_data(row):
     return errors, row
 
 def detect_duplicates(df):
-    """Detect duplicate contacts based on email address"""
-    duplicates = df[df.duplicated(subset=['email_address'], keep=False)]
+    """Detect duplicate contacts based on email address (case-insensitive)"""
+    df['email_lower'] = df['email_address'].str.lower()
+    duplicates = df[df.duplicated(subset=['email_lower'], keep=False)]
     return duplicates
 
 def process_spreadsheet(file_path, batch_id, validation_rules=None):
@@ -119,14 +123,14 @@ def process_spreadsheet(file_path, batch_id, validation_rules=None):
         
         # Detect duplicates
         duplicates_df = detect_duplicates(df)
-        duplicate_emails = set(duplicates_df['email_address'].tolist())
+        duplicate_emails = set(duplicates_df['email_lower'].tolist())
         
         # Process each row
         for index, row in df.iterrows():
             errors, validated_row = validate_contact_data(row.to_dict())
             
             # Check if duplicate
-            is_duplicate = row['email_address'] in duplicate_emails
+            is_duplicate = row['email_address'].lower() in duplicate_emails
             
             if is_duplicate:
                 validation_status = 'duplicate'
