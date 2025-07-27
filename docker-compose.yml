@@ -6,8 +6,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - .:/app
-      - /tmp/app.db:/tmp/app.db
+      - ./database:/app/database
 
 networks:
   default:

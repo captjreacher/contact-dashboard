@@ -30,7 +30,7 @@ app.register_blueprint(samples_bp, url_prefix='/api')
 app.register_blueprint(webhooks_bp, url_prefix='/api')
 
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////tmp/app.db"
+app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///database/app.db"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
