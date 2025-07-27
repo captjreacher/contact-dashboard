@@ -81,6 +81,7 @@ class Contact(db.Model):
             'phone_number': self.phone_number,
             'company_name': self.company_name,
             'validation_status': self.validation_status,
+            'validation_errors': json.loads(self.validation_errors) if self.validation_errors else [],
             'email_verification_status': self.email_verification_status,
             'created_timestamp': self.created_timestamp.isoformat() if self.created_timestamp else None
         }
