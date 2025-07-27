@@ -12,6 +12,7 @@ from src.routes.contacts import contacts_bp
 from src.routes.campaigns import campaigns_bp
 from src.routes.samples import samples_bp
 from src.routes.webhooks import webhooks_bp
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
@@ -29,11 +30,16 @@ app.register_blueprint(samples_bp, url_prefix='/api')
 app.register_blueprint(webhooks_bp, url_prefix='/api')
 
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
+app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////tmp/app.db"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
+
 with app.app_context():
     db.create_all()
+
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    db.session.remove()
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')

@@ -120,26 +120,19 @@ def create_campaign():
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@campaigns_bp.route('/campaigns/<int:campaign_id>/start', methods=['POST'])
-def start_campaign(campaign_id):
-    """Start campaign execution"""
-    try:
+import threading
+from flask import current_app
+
+def run_campaign_in_background(app, campaign_id):
+    with app.app_context():
         campaign = Campaign.query.get(campaign_id)
         if not campaign:
-            return jsonify({'success': False, 'error': 'Campaign not found'}), 404
-        
-        if campaign.campaign_status != 'draft':
-            return jsonify({'success': False, 'error': 'Campaign is not in draft status'}), 400
-        
-        # Update campaign status
-        campaign.campaign_status = 'running'
-        campaign.execution_start_time = datetime.utcnow()
-        db.session.commit()
-        
+            return
+
         # Get selected contacts
         contact_ids = campaign.get_selected_contact_ids()
         contacts = Contact.query.filter(Contact.contact_id.in_(contact_ids)).all()
-        
+
         # Process contacts one by one
         for contact in contacts:
             try:
@@ -151,7 +144,7 @@ def start_campaign(campaign_id):
                 )
                 db.session.add(result)
                 db.session.flush()  # Get the result ID
-                
+
                 # Prepare payload for Make.com
                 payload = {
                     'campaign_id': campaign_id,
@@ -175,7 +168,7 @@ def start_campaign(campaign_id):
                     },
                     'campaign_settings': campaign.get_campaign_settings()
                 }
-                
+
                 # Send to Make.com webhook
                 try:
                     response = requests.post(
@@ -184,7 +177,7 @@ def start_campaign(campaign_id):
                         timeout=30,
                         headers={'Content-Type': 'application/json'}
                     )
-                    
+
                     if response.status_code == 200:
                         result.processing_status = 'sent'
                         result.set_make_response(response.json() if response.content else {})
@@ -193,50 +186,70 @@ def start_campaign(campaign_id):
                         result.processing_status = 'failed'
                         result.error_message = f"HTTP {response.status_code}: {response.text}"
                         campaign.failed_contacts += 1
-                        
+
                 except requests.exceptions.RequestException as e:
                     result.processing_status = 'failed'
                     result.error_message = str(e)
                     campaign.failed_contacts += 1
-                
+
                 result.processed_timestamp = datetime.utcnow()
                 campaign.processed_contacts += 1
-                
+
                 db.session.commit()
-                
+
                 # Add delay between requests to avoid overwhelming Make.com
                 time.sleep(1)
-                
+
             except Exception as e:
                 # Log error but continue with other contacts
                 print(f"Error processing contact {contact.contact_id}: {str(e)}")
                 campaign.failed_contacts += 1
                 campaign.processed_contacts += 1
                 db.session.commit()
-        
+
         # Update campaign completion
         campaign.campaign_status = 'completed'
         campaign.execution_end_time = datetime.utcnow()
         db.session.commit()
-        
+        db.session.remove()
+
+
+@campaigns_bp.route('/campaigns/<int:campaign_id>/start', methods=['POST'])
+def start_campaign(campaign_id):
+    """Start campaign execution"""
+    try:
+        campaign = Campaign.query.get(campaign_id)
+        if not campaign:
+            return jsonify({'success': False, 'error': 'Campaign not found'}), 404
+
+        if campaign.campaign_status != 'draft':
+            return jsonify({'success': False, 'error': 'Campaign is not in draft status'}), 400
+
+        # Update campaign status
+        campaign.campaign_status = 'running'
+        campaign.execution_start_time = datetime.utcnow()
+        db.session.commit()
+
+        # Run campaign in background thread
+        app = current_app._get_current_object()
+        thread = threading.Thread(target=run_campaign_in_background, args=(app, campaign_id))
+        thread.daemon = True
+        thread.start()
+
         return jsonify({
             'success': True,
             'campaign_id': campaign_id,
-            'status': 'completed',
-            'execution_start_time': campaign.execution_start_time.isoformat(),
-            'execution_end_time': campaign.execution_end_time.isoformat(),
-            'total_contacts': campaign.total_contacts,
-            'successful_contacts': campaign.successful_contacts,
-            'failed_contacts': campaign.failed_contacts
+            'status': 'running',
+            'message': 'Campaign started in the background.'
         })
-        
+
     except Exception as e:
         # Update campaign status to failed
         if 'campaign' in locals():
             campaign.campaign_status = 'failed'
             campaign.execution_end_time = datetime.utcnow()
             db.session.commit()
-        
+
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @campaigns_bp.route('/campaigns/<int:campaign_id>/status', methods=['GET'])
