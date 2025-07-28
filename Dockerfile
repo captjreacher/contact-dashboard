@@ -13,6 +13,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application's code into the container at /app
 COPY . .
 
+# Copy the entrypoint script into the container
+COPY entrypoint.sh .
+
+# Make the entrypoint script executable
+RUN chmod +x entrypoint.sh
+
 # Create and set permissions for the uploads directory
 RUN mkdir -p /app/src/uploads && chmod -R 777 /app/src/uploads
 
