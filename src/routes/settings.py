@@ -50,6 +50,12 @@ def create_webhook():
             except json.JSONDecodeError:
                 return jsonify({'error': 'Invalid JSON format for output fields'}), 400
         
+        if data.get('headers'):
+            try:
+                json.loads(data['headers'])
+            except json.JSONDecodeError:
+                return jsonify({'error': 'Invalid JSON format for headers'}), 400
+
         webhook = WebhookConfig(
             webhook_id=str(uuid.uuid4()),
             name=data['name'],
@@ -58,6 +64,7 @@ def create_webhook():
             url=data['url'],
             input_fields=data.get('input_fields', ''),
             output_fields=data.get('output_fields', ''),
+            headers=data.get('headers', ''),
             is_active=data.get('is_active', True)
         )
         
@@ -96,6 +103,12 @@ def update_webhook(webhook_id):
             except json.JSONDecodeError:
                 return jsonify({'error': 'Invalid JSON format for output fields'}), 400
         
+        if data.get('headers'):
+            try:
+                json.loads(data['headers'])
+            except json.JSONDecodeError:
+                return jsonify({'error': 'Invalid JSON format for headers'}), 400
+
         # Update fields
         if 'name' in data:
             webhook.name = data['name']
@@ -111,6 +124,8 @@ def update_webhook(webhook_id):
             webhook.input_fields = data['input_fields']
         if 'output_fields' in data:
             webhook.output_fields = data['output_fields']
+        if 'headers' in data:
+            webhook.headers = data['headers']
         if 'is_active' in data:
             webhook.is_active = data['is_active']
         

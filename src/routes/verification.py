@@ -82,13 +82,23 @@ def run_verification():
             
             webhook_data['contacts'].append(contact_data)
         
+        # Prepare headers for the webhook
+        headers = {'Content-Type': 'application/json'}
+        if webhook.headers:
+            try:
+                custom_headers = json.loads(webhook.headers)
+                headers.update(custom_headers)
+            except json.JSONDecodeError:
+                # Log the error or handle it as needed
+                pass
+
         # Send webhook to Make.com (async in production)
         try:
             response = requests.post(
                 webhook.url,
                 json=webhook_data,
                 timeout=30,
-                headers={'Content-Type': 'application/json'}
+                headers=headers
             )
             
             if response.status_code == 200:
