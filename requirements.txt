@@ -6,6 +6,7 @@ numpy
 pandas
 openpyxl
 requests
+gunicorn
 python-dateutil
 Werkzeug
 SQLAlchemy
