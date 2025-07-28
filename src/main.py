@@ -6,12 +6,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 from src.models.models import db, Contact, UploadBatch, ValidationRule, Campaign, CampaignResult, CampaignJob, SampleRequest, AuditLog
+from src.models.webhook_config import WebhookConfig, CampaignJob as WebhookCampaignJob, VerificationJob, CampaignExecution
 from src.routes.user import user_bp
 from src.routes.upload import upload_bp
 from src.routes.contacts import contacts_bp
 from src.routes.campaigns import campaigns_bp
 from src.routes.samples import samples_bp
 from src.routes.webhooks import webhooks_bp
+from src.routes.settings import settings_bp
+from src.routes.verification import verification_bp
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
@@ -28,6 +31,8 @@ app.register_blueprint(contacts_bp, url_prefix='/api')
 app.register_blueprint(campaigns_bp, url_prefix='/api')
 app.register_blueprint(samples_bp, url_prefix='/api')
 app.register_blueprint(webhooks_bp, url_prefix='/api')
+app.register_blueprint(settings_bp, url_prefix='/api/settings')
+app.register_blueprint(verification_bp, url_prefix='/api/verification')
 
 # Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////app/database/app.db"
