@@ -12,6 +12,7 @@ class WebhookConfig(db.Model):
     url = db.Column(db.String(500), nullable=False)
     input_fields = db.Column(db.Text)  # JSON string of field definitions
     output_fields = db.Column(db.Text)  # JSON string of field definitions
+    headers = db.Column(db.Text)  # JSON string of headers
     is_active = db.Column(db.Boolean, default=True)
     created_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     updated_timestamp = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -25,6 +26,7 @@ class WebhookConfig(db.Model):
             'url': self.url,
             'input_fields': self.input_fields,
             'output_fields': self.output_fields,
+            'headers': self.headers,
             'is_active': self.is_active,
             'created_timestamp': self.created_timestamp.isoformat() if self.created_timestamp else None,
             'updated_timestamp': self.updated_timestamp.isoformat() if self.updated_timestamp else None
