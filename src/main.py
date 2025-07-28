@@ -1,12 +1,12 @@
 import os
 import sys
-# DON'T CHANGE THIS !!!
+# DON\'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 from src.models.models import db, Contact, UploadBatch, ValidationRule, Campaign, CampaignResult, CampaignJob, SampleRequest, AuditLog
-from src.models.webhook_config import WebhookConfig, CampaignJob as WebhookCampaignJob, VerificationJob, CampaignExecution
+from src.models.webhook_config import WebhookConfig, VerificationJob, CampaignExecution
 from src.routes.user import user_bp
 from src.routes.upload import upload_bp
 from src.routes.contacts import contacts_bp
@@ -35,7 +35,7 @@ app.register_blueprint(settings_bp, url_prefix='/api/settings')
 app.register_blueprint(verification_bp, url_prefix='/api/verification')
 
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////app/database/app.db"
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "database", "app.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
@@ -68,3 +68,5 @@ def serve(path):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+

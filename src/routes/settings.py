@@ -2,8 +2,8 @@ from flask import Blueprint, request, jsonify
 import uuid
 import json
 from datetime import datetime
-from src.models.models import db
-from src.models.webhook_config import WebhookConfig, CampaignJob
+from src.models.models import db, CampaignJob
+from src.models.webhook_config import WebhookConfig
 
 settings_bp = Blueprint('settings', __name__)
 

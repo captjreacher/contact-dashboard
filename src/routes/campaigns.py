@@ -5,9 +5,8 @@ import uuid
 from datetime import datetime
 from src.models.models import db
 from src.models.models import Contact
-from src.models.models import Campaign, CampaignResult, CampaignJob
-from src.models.models import SampleRequest, AuditLog
-from src.models.webhook_config import CampaignJob as WebhookCampaignJob, CampaignExecution
+from src.models.models import Campaign, CampaignResult, CampaignJob, SampleRequest, AuditLog
+from src.models.webhook_config import WebhookConfig, VerificationJob, CampaignExecution
 
 campaigns_bp = Blueprint('campaigns', __name__)
 

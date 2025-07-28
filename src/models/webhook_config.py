@@ -1,8 +1,6 @@
-from flask_sqlalchemy import SQLAlchemy
+from src.models.models import db
 from datetime import datetime
 import json
-
-db = SQLAlchemy()
 
 class WebhookConfig(db.Model):
     __tablename__ = 'webhook_configs'
@@ -25,32 +23,6 @@ class WebhookConfig(db.Model):
             'description': self.description,
             'webhook_type': self.webhook_type,
             'url': self.url,
-            'input_fields': self.input_fields,
-            'output_fields': self.output_fields,
-            'is_active': self.is_active,
-            'created_timestamp': self.created_timestamp.isoformat() if self.created_timestamp else None,
-            'updated_timestamp': self.updated_timestamp.isoformat() if self.updated_timestamp else None
-        }
-
-class CampaignJob(db.Model):
-    __tablename__ = 'campaign_jobs'
-    
-    job_id = db.Column(db.String(36), primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text)
-    webhook_url = db.Column(db.String(500), nullable=False)
-    input_fields = db.Column(db.Text)  # JSON string of field definitions
-    output_fields = db.Column(db.Text)  # JSON string of field definitions
-    is_active = db.Column(db.Boolean, default=True)
-    created_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_timestamp = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    def to_dict(self):
-        return {
-            'job_id': self.job_id,
-            'name': self.name,
-            'description': self.description,
-            'webhook_url': self.webhook_url,
             'input_fields': self.input_fields,
             'output_fields': self.output_fields,
             'is_active': self.is_active,
@@ -103,4 +75,5 @@ class CampaignExecution(db.Model):
             'completed_timestamp': self.completed_timestamp.isoformat() if self.completed_timestamp else None,
             'error_message': self.error_message
         }
+
 
