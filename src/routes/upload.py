@@ -51,13 +51,13 @@ def validate_required_fields(row):
     """Validate required fields"""
     errors = []
     
-    if not row.get('first_name') or str(row['first_name']).strip() == '':
+    if not row.get('first_name') or pd.isna(row.get('first_name')) or str(row['first_name']).strip() == '':
         errors.append('First name is required')
     
-    if not row.get('last_name') or str(row['last_name']).strip() == '':
+    if not row.get('last_name') or pd.isna(row.get('last_name')) or str(row['last_name']).strip() == '':
         errors.append('Last name is required')
     
-    if not row.get('email_address') or str(row['email_address']).strip() == '':
+    if not row.get('email_address') or pd.isna(row.get('email_address')) or str(row['email_address']).strip() == '':
         errors.append('Email address is required')
     
     return errors
@@ -102,6 +102,8 @@ def process_spreadsheet(file_path, batch_id, validation_rules=None):
         # Standardize column names
         df.columns = df.columns.str.lower().str.replace(' ', '_')
         
+        # Fill NaN values with empty strings
+        df.fillna('', inplace=True)
         # Required columns mapping
         required_columns = {
             'first_name': ['first_name', 'firstname', 'fname'],
