@@ -21,9 +21,10 @@ EXPOSE 5000
 
 # Define environment variable
 ENV NAME World
+ENV FLASK_APP=src/main.py
 
 # Run app.py when the container launches
-CMD ["python", "src/main.py"]
+CMD ["sh", "-c", "flask db upgrade && gunicorn --bind 0.0.0.0:5000 --daemon 'src.main:app'"]
 
 
 
