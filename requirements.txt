@@ -1,10 +1,12 @@
 Flask
 Flask-CORS
 Flask-SQLAlchemy
+Flask-Migrate
 numpy
 pandas
 openpyxl
 requests
+gunicorn
 python-dateutil
 Werkzeug
 SQLAlchemy
