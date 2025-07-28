@@ -53,19 +53,37 @@ The application uses a SQLite database to store its data. The database file is l
 
 ### Webhook API Key Authentication
 
-To secure the webhook endpoints (`/api/webhooks/verification-results` and `/api/webhooks/campaign-results`), API key authentication has been implemented. When sending requests to these endpoints, you must include an `X-API-Key` header with a valid API key.
+To secure the webhook endpoints (`/api/webhooks/verification-results` and `/api/webhooks/campaign-results`), API key authentication has been implemented. When sending requests to these endpoints, you must include an `X-API-Key` header with a valid API key. The API key is now read from the `WEBHOOK_API_KEY` environment variable.
+
+**Generating a Secure API Key:**
+You can generate a secure API key using Python's `secrets` module. Open a Python interpreter or run a Python script with the following code:
+
+```python
+import secrets
+print(secrets.token_urlsafe(32))
+```
+
+This will output a strong, URL-safe API key (e.g., `3eCx0zo7-pQsLTE7VYDTfZKALTD1dTLhuEEor4bBnRM`).
+
+**Setting the API Key Environment Variable:**
+When running the application with Docker Compose, you can set the `WEBHOOK_API_KEY` environment variable in your `.env` file or directly in your shell before running `docker-compose up`.
+
+Example `.env` file:
+```
+WEBHOOK_API_KEY=your_generated_api_key_here
+```
 
 **Example Request with API Key:**
 
 ```
 POST /api/webhooks/campaign-results
 Content-Type: application/json
-X-API-Key: YOUR_API_KEY
+X-API-Key: your_generated_api_key_here
 
 {
     "some_data": "value"
 }
 ```
 
-**Note:** Replace `YOUR_API_KEY` with the actual API key configured in the application. For security, it is recommended to store your API key securely (e.g., in environment variables) and not hardcode it in your Make.com scenarios.
+**Note:** Replace `your_generated_api_key_here` with the actual API key you generated. For security, it is recommended to store your API key securely (e.g., in environment variables) and not hardcode it in your Make.com scenarios.
 

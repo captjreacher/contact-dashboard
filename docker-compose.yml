@@ -8,5 +8,6 @@ services:
     user: "1000:1000"
     volumes:
       - ./data/db:/app/database
-
+    environment:
+      - WEBHOOK_API_KEY=${WEBHOOK_API_KEY}
 

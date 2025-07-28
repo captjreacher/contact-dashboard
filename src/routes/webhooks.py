@@ -1,3 +1,4 @@
+import os
 from flask import Blueprint, request, jsonify
 import json
 import hmac
@@ -32,7 +33,7 @@ def receive_verification_results():
     try:
         # API Key authentication
         api_key = request.headers.get("X-API-Key")
-        if not api_key or api_key != "YOUR_API_KEY": # Replace YOUR_API_KEY with a strong, securely stored key
+        if not api_key or api_key != os.environ.get("WEBHOOK_API_KEY"):
             return jsonify({"success": False, "error": "Unauthorized: Invalid or missing API Key"}), 401
 
         # Get raw payload for signature verification
@@ -118,7 +119,7 @@ def receive_campaign_results():
     try:
         # API Key authentication
         api_key = request.headers.get("X-API-Key")
-        if not api_key or api_key != "YOUR_API_KEY": # Replace YOUR_API_KEY with a strong, securely stored key
+        if not api_key or api_key != os.environ.get("WEBHOOK_API_KEY"):
             return jsonify({"success": False, "error": "Unauthorized: Invalid or missing API Key"}), 401
 
         # Get raw payload for signature verification
