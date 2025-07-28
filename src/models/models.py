@@ -9,6 +9,7 @@ class Contact(db.Model):
     
     contact_id = db.Column(db.Integer, primary_key=True)
     upload_batch_id = db.Column(db.String(36), nullable=False, index=True)
+    row_number = db.Column(db.Integer)
     first_name = db.Column(db.String(100), nullable=False)
     last_name = db.Column(db.String(100), nullable=False)
     email_address = db.Column(db.String(255), nullable=False, index=True)
@@ -81,6 +82,7 @@ class Contact(db.Model):
             'phone_number': self.phone_number,
             'company_name': self.company_name,
             'validation_status': self.validation_status,
+            'validation_errors': json.loads(self.validation_errors) if self.validation_errors else [],
             'email_verification_status': self.email_verification_status,
             'created_timestamp': self.created_timestamp.isoformat() if self.created_timestamp else None
         }
