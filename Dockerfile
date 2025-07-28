@@ -13,6 +13,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application's code into the container at /app
 COPY . .
 
+# Create and set permissions for the uploads directory
+RUN mkdir -p /app/src/uploads && chmod -R 777 /app/src/uploads
+
 # Make port 5000 available to the world outside this container
 EXPOSE 5000
 
