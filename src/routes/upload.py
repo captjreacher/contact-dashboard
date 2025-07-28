@@ -51,13 +51,13 @@ def validate_required_fields(row):
     """Validate required fields"""
     errors = []
     
-    if not row.get('first_name') or str(row['first_name']).strip() == '':
+    if not row.get('first_name') or pd.isna(row.get('first_name')) or str(row['first_name']).strip() == '':
         errors.append('First name is required')
     
-    if not row.get('last_name') or str(row['last_name']).strip() == '':
+    if not row.get('last_name') or pd.isna(row.get('last_name')) or str(row['last_name']).strip() == '':
         errors.append('Last name is required')
     
-    if not row.get('email_address') or str(row['email_address']).strip() == '':
+    if not row.get('email_address') or pd.isna(row.get('email_address')) or str(row['email_address']).strip() == '':
         errors.append('Email address is required')
     
     return errors
@@ -86,8 +86,8 @@ def validate_contact_data(row):
 
 def detect_duplicates(df):
     """Detect duplicate contacts based on email address (case-insensitive)"""
-    df['email_lower'] = df['email_address'].str.lower()
-    duplicates = df[df.duplicated(subset=['email_lower'], keep=False)]
+    df['email_lower'] = df['email_address'].str.lower().fillna('')
+    duplicates = df[df.duplicated(subset=['email_lower'], keep=False) & (df['email_lower'] != '')]
     return duplicates
 
 def process_spreadsheet(file_path, batch_id, validation_rules=None):
@@ -95,13 +95,15 @@ def process_spreadsheet(file_path, batch_id, validation_rules=None):
     try:
         # Read the file
         if file_path.endswith('.csv'):
-            df = pd.read_csv(file_path)
+            df = pd.read_csv(file_path, dtype=str)
         else:
-            df = pd.read_excel(file_path)
+            df = pd.read_excel(file_path, dtype=str)
         
         # Standardize column names
         df.columns = df.columns.str.lower().str.replace(' ', '_')
         
+        # Fill NaN values with empty strings
+        df.fillna('', inplace=True)
         # Required columns mapping
         required_columns = {
             'first_name': ['first_name', 'firstname', 'fname'],
@@ -145,6 +147,7 @@ def process_spreadsheet(file_path, batch_id, validation_rules=None):
             # Create contact record
             contact = Contact(
                 upload_batch_id=batch_id,
+                row_number=index + 2,  # Adding 2 to account for header and 0-based index
                 first_name=validated_row.get('first_name', '').strip(),
                 last_name=validated_row.get('last_name', '').strip(),
                 email_address=validated_row.get('email_address', '').strip().lower(),
@@ -196,6 +199,7 @@ def process_spreadsheet(file_path, batch_id, validation_rules=None):
 @upload_bp.route('/upload', methods=['POST'])
 def upload_file():
     """Upload and process contact spreadsheet"""
+    batch_id = str(uuid.uuid4())
     try:
         if 'file' not in request.files:
             return jsonify({'success': False, 'error': 'No file provided'}), 400
@@ -206,9 +210,6 @@ def upload_file():
         
         if not allowed_file(file.filename):
             return jsonify({'success': False, 'error': 'Invalid file type. Please upload CSV or Excel files.'}), 400
-        
-        # Generate batch ID
-        batch_id = str(uuid.uuid4())
         
         # Save file
         filename = secure_filename(file.filename)
@@ -256,7 +257,17 @@ def upload_file():
             }), 500
             
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        # Log the exception
+        current_app.logger.error(f"Upload failed for batch {batch_id}: {str(e)}")
+
+        # Update batch with error
+        batch = UploadBatch.query.get(batch_id)
+        if batch:
+            batch.processing_status = 'failed'
+            batch.processing_errors = json.dumps([str(e)])
+            db.session.commit()
+
+        return jsonify({'success': False, 'batch_id': batch_id, 'error': str(e)}), 500
 
 @upload_bp.route('/upload/<batch_id>/status', methods=['GET'])
 def get_upload_status(batch_id):

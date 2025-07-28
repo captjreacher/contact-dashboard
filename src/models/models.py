@@ -9,6 +9,7 @@ class Contact(db.Model):
     
     contact_id = db.Column(db.Integer, primary_key=True)
     upload_batch_id = db.Column(db.String(36), nullable=False, index=True)
+    row_number = db.Column(db.Integer)
     first_name = db.Column(db.String(100), nullable=False)
     last_name = db.Column(db.String(100), nullable=False)
     email_address = db.Column(db.String(255), nullable=False, index=True)
