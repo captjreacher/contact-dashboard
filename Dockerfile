@@ -30,7 +30,7 @@ ENV NAME World
 ENV FLASK_APP=src/main.py
 
 # Run app.py when the container launches
-CMD ["sh", "-c", "flask db upgrade && gunicorn --bind 0.0.0.0:5000 'src.main:app'"]
+CMD ["sh", "-c", "flask db upgrade && gunicorn --bind 0.0.0.0:5000 --daemon 'src.main:app'"]
 
 
 
