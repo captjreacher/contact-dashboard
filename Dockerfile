@@ -23,7 +23,7 @@ EXPOSE 5000
 ENV NAME World
 
 # Run app.py when the container launches
-CMD ["python", "src/main.py"]
+CMD ["sh", "-c", "flask db upgrade && gunicorn --bind 0.0.0.0:5000 'src.main:app'"]
 
 
 
