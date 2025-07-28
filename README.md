@@ -49,3 +49,23 @@ The application provides a RESTful API for managing contacts, campaigns, and oth
 ## Database
 
 The application uses a SQLite database to store its data. The database file is located at `/tmp/app.db` within the container and is mounted to the host filesystem to ensure data persistence.
+
+
+### Webhook API Key Authentication
+
+To secure the webhook endpoints (`/api/webhooks/verification-results` and `/api/webhooks/campaign-results`), API key authentication has been implemented. When sending requests to these endpoints, you must include an `X-API-Key` header with a valid API key.
+
+**Example Request with API Key:**
+
+```
+POST /api/webhooks/campaign-results
+Content-Type: application/json
+X-API-Key: YOUR_API_KEY
+
+{
+    "some_data": "value"
+}
+```
+
+**Note:** Replace `YOUR_API_KEY` with the actual API key configured in the application. For security, it is recommended to store your API key securely (e.g., in environment variables) and not hardcode it in your Make.com scenarios.
+

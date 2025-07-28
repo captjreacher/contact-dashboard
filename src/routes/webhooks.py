@@ -26,13 +26,18 @@ def verify_webhook_signature(payload, signature, secret_key='webhook_secret'):
     # Compare signatures securely
     return hmac.compare_digest(signature, expected_signature)
 
-@webhooks_bp.route('/verification-results', methods=['POST'])
+@webhooks_bp.route("/verification-results", methods=["POST"])
 def receive_verification_results():
     """Receive email verification results from Make.com"""
     try:
+        # API Key authentication
+        api_key = request.headers.get("X-API-Key")
+        if not api_key or api_key != "YOUR_API_KEY": # Replace YOUR_API_KEY with a strong, securely stored key
+            return jsonify({"success": False, "error": "Unauthorized: Invalid or missing API Key"}), 401
+
         # Get raw payload for signature verification
         payload = request.get_data()
-        signature = request.headers.get('X-Make-Signature')
+        signature = request.headers.get("X-Make-Signature")
         
         # Verify signature (commented out for development)
         # if not verify_webhook_signature(payload, signature):
@@ -107,13 +112,18 @@ def receive_verification_results():
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@webhooks_bp.route('/campaign-results', methods=['POST'])
+@webhooks_bp.route("/campaign-results", methods=["POST"])
 def receive_campaign_results():
     """Receive campaign results from Make.com"""
     try:
+        # API Key authentication
+        api_key = request.headers.get("X-API-Key")
+        if not api_key or api_key != "YOUR_API_KEY": # Replace YOUR_API_KEY with a strong, securely stored key
+            return jsonify({"success": False, "error": "Unauthorized: Invalid or missing API Key"}), 401
+
         # Get raw payload for signature verification
         payload = request.get_data()
-        signature = request.headers.get('X-Make-Signature')
+        signature = request.headers.get("X-Make-Signature")
         
         # Verify signature (commented out for development)
         # if not verify_webhook_signature(payload, signature):
