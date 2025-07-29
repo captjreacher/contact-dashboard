@@ -10,5 +10,133 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (function() {
+    const observer = new MutationObserver((mutationsList, observer) => {
+        const webhookForm = findWebhookForm();
+        if (webhookForm && !document.getElementById('http-headers-field-container')) {
+            addHeadersField(webhookForm);
+        }
+    });
+
+    observer.observe(document.getElementById('root'), {
+        childList: true,
+        subtree: true
+    });
+
+    function findWebhookForm() {
+        const dialog = document.querySelector('div[role="dialog"]');
+        if (!dialog) return null;
+
+        const urlInput = dialog.querySelector('input[name="url"]');
+        const nameInput = dialog.querySelector('input[name="name"]');
+        if (urlInput || nameInput) {
+            return dialog;
+        }
+        return null;
+    }
+
+    function addHeadersField(form) {
+        const container = document.createElement('div');
+        container.id = 'http-headers-field-container';
+        const otherField = form.querySelector('label');
+        if(otherField && otherField.parentElement) {
+            container.className = otherField.parentElement.className;
+        }
+
+
+        const headersLabel = document.createElement('label');
+        headersLabel.innerText = 'HTTP Header';
+        headersLabel.htmlFor = 'http-headers-field';
+        if(otherField) {
+            headersLabel.className = otherField.className;
+        }
+
+
+        const headersTextarea = document.createElement('textarea');
+        headersTextarea.id = 'http-headers-field';
+        headersTextarea.name = 'headers';
+        headersTextarea.rows = 3;
+        headersTextarea.placeholder = 'e.g., {"x-make-apikey": "YOUR_API_KEY"}';
+        const urlInput = form.querySelector('input[name="url"]');
+        if(urlInput) {
+             headersTextarea.className = urlInput.className;
+        }
+
+
+        container.appendChild(headersLabel);
+        container.appendChild(headersTextarea);
+
+        const saveButton = Array.from(form.querySelectorAll('button')).find(btn => btn.textContent.includes('Save') || btn.textContent.includes('Create'));
+
+        if (saveButton && saveButton.parentElement) {
+            const parentOfButton = saveButton.parentElement;
+            parentOfButton.parentElement.insertBefore(container, parentOfButton)
+        } else {
+            const buttonContainer = form.querySelector('div:has(> button)');
+            if(buttonContainer) {
+                buttonContainer.parentElement.insertBefore(container, buttonContainer);
+            } else {
+                 form.appendChild(container);
+            }
+        }
+    }
+
+    const originalFetch = window.fetch;
+    window.fetch = async function(url, options) {
+        const method = options ? options.method || 'GET' : 'GET';
+        const isWebhookUrl = typeof url === 'string' && url.includes('/api/settings/webhooks');
+
+        if (isWebhookUrl && (method === 'POST' || method === 'PUT')) {
+            const headersTextarea = document.getElementById('http-headers-field');
+            if (headersTextarea && options.body) {
+                try {
+                    const body = JSON.parse(options.body);
+                    let headersValue = headersTextarea.value.trim();
+
+                    if(headersValue) {
+                        try {
+                            JSON.parse(headersValue);
+                            body.headers = headersValue;
+                        } catch (e) {
+                            console.error("Invalid JSON in HTTP Headers field", e);
+                            body.headers = headersValue;
+                        }
+                    } else {
+                        body.headers = "{}";
+                    }
+
+                    options.body = JSON.stringify(body);
+                } catch (e) {
+                    console.error("Could not modify fetch body for webhook save.", e);
+                }
+            }
+        }
+
+        const response = await originalFetch.apply(this, arguments);
+
+        if (isWebhookUrl && method === 'GET' && url.match(/\/webhooks\/\w+$/)) {
+            const clonedResponse = response.clone();
+            clonedResponse.json().then(data => {
+                if (data.webhook && data.webhook.headers) {
+                     setTimeout(() => {
+                        const headersTextarea = document.getElementById('http-headers-field');
+                        if (headersTextarea) {
+                            try {
+                                const headersObj = JSON.parse(data.webhook.headers);
+                                headersTextarea.value = JSON.stringify(headersObj, null, 2);
+                            } catch (e) {
+                                headersTextarea.value = data.webhook.headers;
+                            }
+                        }
+                    }, 200);
+                }
+            });
+        }
+
+        return response;
+    };
+})();
+    </script>
   </body>
 </html>
