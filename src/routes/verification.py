@@ -83,24 +83,25 @@ def run_verification():
             webhook_data['contacts'].append(contact_data)
         
         # Prepare headers for the webhook
+        import logging
+        logging.basicConfig(level=logging.INFO)
         headers = {'Content-Type': 'application/json'}
-        if webhook.headers:
+
+        logging.info(f"Processing headers for webhook {webhook.webhook_id}. Raw headers from DB: '{webhook.headers}'")
+        if webhook.headers and webhook.headers.strip():
             try:
                 custom_headers = json.loads(webhook.headers)
                 headers.update(custom_headers)
+                logging.info(f"Successfully loaded and updated headers for webhook {webhook.webhook_id}.")
             except json.JSONDecodeError:
-                import logging
-                logging.warning(f"Could not parse headers for webhook {webhook.webhook_id}. Invalid JSON: {webhook.headers}")
+                logging.error(f"HEADER PARSE FAILED for webhook {webhook.webhook_id}. Invalid JSON received: {webhook.headers}")
         else:
-            import logging
-            logging.warning(f"No headers found for webhook {webhook.webhook_id}")
+            logging.warning(f"No custom headers found or headers are empty for webhook {webhook.webhook_id}.")
 
         # Send webhook to Make.com (async in production)
         try:
-            import logging
-            logging.basicConfig(level=logging.INFO)
             logging.info(f"Sending verification webhook for job {job_id} to {webhook.url}")
-            logging.info(f"Webhook headers: {json.dumps(headers)}")
+            logging.info(f"Final headers being sent: {json.dumps(headers)}")
             # logging.info(f"Webhook body: {json.dumps(webhook_data)}")
 
             response = requests.post(

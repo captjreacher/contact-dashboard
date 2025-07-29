@@ -143,21 +143,25 @@ def run_campaign(campaign_id):
             webhook_data['contacts'].append(contact_data)
         
         # Prepare headers for the webhook
+        import logging
+        logging.basicConfig(level=logging.INFO)
         headers = {'Content-Type': 'application/json'}
-        if campaign_job.headers:
+
+        logging.info(f"Processing headers for campaign job {campaign_job.job_id}. Raw headers from DB: '{campaign_job.headers}'")
+        if campaign_job.headers and campaign_job.headers.strip():
             try:
                 custom_headers = json.loads(campaign_job.headers)
                 headers.update(custom_headers)
+                logging.info(f"Successfully loaded and updated headers for campaign job {campaign_job.job_id}.")
             except json.JSONDecodeError:
-                # Log the error or handle it as needed
-                pass
+                logging.error(f"HEADER PARSE FAILED for campaign job {campaign_job.job_id}. Invalid JSON received: {campaign_job.headers}")
+        else:
+            logging.warning(f"No custom headers found or headers are empty for campaign job {campaign_job.job_id}.")
 
         # Send webhook to Make.com
         try:
-            import logging
-            logging.basicConfig(level=logging.INFO)
             logging.info(f"Sending campaign webhook for execution {execution_id} to {campaign_job.webhook_url}")
-            logging.info(f"Webhook headers: {json.dumps(headers)}")
+            logging.info(f"Final headers being sent: {json.dumps(headers)}")
             # logging.info(f"Webhook body: {json.dumps(webhook_data)}")
 
             response = requests.post(
