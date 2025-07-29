@@ -94,20 +94,30 @@ def run_verification():
 
         # Send webhook to Make.com (async in production)
         try:
+            import logging
+            logging.basicConfig(level=logging.INFO)
+            logging.info(f"Sending verification webhook for job {job_id} to {webhook.url}")
+            logging.info(f"Webhook headers: {json.dumps(headers)}")
+            # logging.info(f"Webhook body: {json.dumps(webhook_data)}")
+
             response = requests.post(
                 webhook.url,
                 json=webhook_data,
                 timeout=30,
                 headers=headers
             )
+
+            logging.info(f"Webhook response status code: {response.status_code}")
+            # logging.info(f"Webhook response body: {response.text}")
             
             if response.status_code == 200:
                 verification_job.status = 'processing'
             else:
                 verification_job.status = 'failed'
-                verification_job.error_message = f'Webhook failed with status {response.status_code}'
+                verification_job.error_message = f'Webhook failed with status {response.status_code}: {response.text}'
             
         except requests.RequestException as e:
+            logging.error(f"Webhook request failed: {str(e)}")
             verification_job.status = 'failed'
             verification_job.error_message = str(e)
         
