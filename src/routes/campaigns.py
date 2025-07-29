@@ -81,7 +81,7 @@ def run_campaign(campaign_id):
             return jsonify({'error': 'Campaign not found'}), 404
         
         # Validate campaign job exists
-        campaign_job = WebhookCampaignJob.query.get(job_id)
+        campaign_job = CampaignJob.query.get(job_id)
         if not campaign_job or not campaign_job.is_active:
             return jsonify({'error': 'Campaign job not found or inactive'}), 404
         
@@ -142,23 +142,47 @@ def run_campaign(campaign_id):
             
             webhook_data['contacts'].append(contact_data)
         
+        # Prepare headers for the webhook
+        import logging
+        logging.basicConfig(level=logging.INFO)
+        headers = {'Content-Type': 'application/json'}
+
+        logging.info(f"Processing headers for campaign job {campaign_job.job_id}. Raw headers from DB: '{campaign_job.headers}'")
+        if campaign_job.headers and campaign_job.headers.strip():
+            try:
+                custom_headers = json.loads(campaign_job.headers)
+                headers.update(custom_headers)
+                logging.info(f"Successfully loaded and updated headers for campaign job {campaign_job.job_id}.")
+            except json.JSONDecodeError:
+                logging.error(f"HEADER PARSE FAILED for campaign job {campaign_job.job_id}. Invalid JSON received: {campaign_job.headers}")
+        else:
+            logging.warning(f"No custom headers found or headers are empty for campaign job {campaign_job.job_id}.")
+
         # Send webhook to Make.com
         try:
+            logging.info(f"Sending campaign webhook for execution {execution_id} to {campaign_job.webhook_url}")
+            logging.info(f"Final headers being sent: {json.dumps(headers)}")
+            # logging.info(f"Webhook body: {json.dumps(webhook_data)}")
+
             response = requests.post(
                 campaign_job.webhook_url,
                 json=webhook_data,
                 timeout=30,
-                headers={'Content-Type': 'application/json'}
+                headers=headers
             )
             
+            logging.info(f"Webhook response status code: {response.status_code}")
+            # logging.info(f"Webhook response body: {response.text}")
+
             if response.status_code == 200:
                 campaign_execution.status = 'processing'
                 campaign.status = 'active'
             else:
                 campaign_execution.status = 'failed'
-                campaign_execution.error_message = f'Webhook failed with status {response.status_code}'
+                campaign_execution.error_message = f'Webhook failed with status {response.status_code}: {response.text}'
             
         except requests.RequestException as e:
+            logging.error(f"Webhook request failed: {str(e)}")
             campaign_execution.status = 'failed'
             campaign_execution.error_message = str(e)
         

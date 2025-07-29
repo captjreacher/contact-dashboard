@@ -287,6 +287,7 @@ class CampaignJob(db.Model):
     job_name = db.Column(db.String(100), unique=True, nullable=False, index=True)
     job_description = db.Column(db.Text)
     webhook_url = db.Column(db.String(500), nullable=False)
+    headers = db.Column(db.Text)  # JSON string of headers
     make_scenario_id = db.Column(db.String(100))
     job_parameters = db.Column(db.Text)  # JSON for required parameters
     is_active = db.Column(db.Boolean, default=True, index=True)
@@ -303,6 +304,7 @@ class CampaignJob(db.Model):
             'job_name': self.job_name,
             'job_description': self.job_description,
             'webhook_url': self.webhook_url,
+            'headers': self.headers,
             'make_scenario_id': self.make_scenario_id,
             'parameters': json.loads(self.job_parameters) if self.job_parameters else [],
             'is_active': self.is_active,

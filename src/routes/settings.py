@@ -195,6 +195,12 @@ def create_campaign_job():
             except json.JSONDecodeError:
                 return jsonify({'error': 'Invalid JSON format for output fields'}), 400
         
+        if data.get('headers'):
+            try:
+                json.loads(data['headers'])
+            except json.JSONDecodeError:
+                return jsonify({'error': 'Invalid JSON format for headers'}), 400
+
         job = CampaignJob(
             job_id=str(uuid.uuid4()),
             name=data['name'],
@@ -202,6 +208,7 @@ def create_campaign_job():
             webhook_url=data['webhook_url'],
             input_fields=data.get('input_fields', ''),
             output_fields=data.get('output_fields', ''),
+            headers=data.get('headers', ''),
             is_active=data.get('is_active', True)
         )
         
@@ -240,6 +247,12 @@ def update_campaign_job(job_id):
             except json.JSONDecodeError:
                 return jsonify({'error': 'Invalid JSON format for output fields'}), 400
         
+        if data.get('headers'):
+            try:
+                json.loads(data['headers'])
+            except json.JSONDecodeError:
+                return jsonify({'error': 'Invalid JSON format for headers'}), 400
+
         # Update fields
         if 'name' in data:
             job.name = data['name']
@@ -251,6 +264,8 @@ def update_campaign_job(job_id):
             job.input_fields = data['input_fields']
         if 'output_fields' in data:
             job.output_fields = data['output_fields']
+        if 'headers' in data:
+            job.headers = data['headers']
         if 'is_active' in data:
             job.is_active = data['is_active']
         
