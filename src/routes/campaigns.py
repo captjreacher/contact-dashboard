@@ -81,7 +81,7 @@ def run_campaign(campaign_id):
             return jsonify({'error': 'Campaign not found'}), 404
         
         # Validate campaign job exists
-        campaign_job = WebhookCampaignJob.query.get(job_id)
+        campaign_job = CampaignJob.query.get(job_id)
         if not campaign_job or not campaign_job.is_active:
             return jsonify({'error': 'Campaign job not found or inactive'}), 404
         
@@ -142,23 +142,43 @@ def run_campaign(campaign_id):
             
             webhook_data['contacts'].append(contact_data)
         
+        # Prepare headers for the webhook
+        headers = {'Content-Type': 'application/json'}
+        if campaign_job.headers:
+            try:
+                custom_headers = json.loads(campaign_job.headers)
+                headers.update(custom_headers)
+            except json.JSONDecodeError:
+                # Log the error or handle it as needed
+                pass
+
         # Send webhook to Make.com
         try:
+            import logging
+            logging.basicConfig(level=logging.INFO)
+            logging.info(f"Sending campaign webhook for execution {execution_id} to {campaign_job.webhook_url}")
+            logging.info(f"Webhook headers: {json.dumps(headers)}")
+            # logging.info(f"Webhook body: {json.dumps(webhook_data)}")
+
             response = requests.post(
                 campaign_job.webhook_url,
                 json=webhook_data,
                 timeout=30,
-                headers={'Content-Type': 'application/json'}
+                headers=headers
             )
             
+            logging.info(f"Webhook response status code: {response.status_code}")
+            # logging.info(f"Webhook response body: {response.text}")
+
             if response.status_code == 200:
                 campaign_execution.status = 'processing'
                 campaign.status = 'active'
             else:
                 campaign_execution.status = 'failed'
-                campaign_execution.error_message = f'Webhook failed with status {response.status_code}'
+                campaign_execution.error_message = f'Webhook failed with status {response.status_code}: {response.text}'
             
         except requests.RequestException as e:
+            logging.error(f"Webhook request failed: {str(e)}")
             campaign_execution.status = 'failed'
             campaign_execution.error_message = str(e)
         
