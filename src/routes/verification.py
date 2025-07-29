@@ -89,8 +89,11 @@ def run_verification():
                 custom_headers = json.loads(webhook.headers)
                 headers.update(custom_headers)
             except json.JSONDecodeError:
-                # Log the error or handle it as needed
-                pass
+                import logging
+                logging.warning(f"Could not parse headers for webhook {webhook.webhook_id}. Invalid JSON: {webhook.headers}")
+        else:
+            import logging
+            logging.warning(f"No headers found for webhook {webhook.webhook_id}")
 
         # Send webhook to Make.com (async in production)
         try:
