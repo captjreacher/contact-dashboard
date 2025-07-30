@@ -10,11 +10,12 @@ COPY requirements.txt .
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the entrypoint script into the container
-COPY entrypoint.sh .
+# Copy and rename the entrypoint script
+COPY entrypoint.sh start.sh
 
-# Make the entrypoint script executable
-RUN chmod +x entrypoint.sh
+# Make the start script executable
+RUN chmod +x start.sh
+
 
 # Convert CRLF to LF for the entrypoint script
 RUN sed -i 's/\r$//' entrypoint.sh
@@ -30,8 +31,8 @@ EXPOSE 5000
 # Define environment variable
 ENV FLASK_APP=src/main.py
 
-# Run the entrypoint script
-ENTRYPOINT ["./entrypoint.sh"]
+# Run the start script
+ENTRYPOINT ["/bin/sh", "./start.sh"]
 
 
 
