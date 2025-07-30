@@ -1,0 +1,177 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: ChatGPT <assistant@openai.com>
+Date: Tue, 30 Jul 2025 00:00:00 +0000
+Subject: [PATCH] Add support for webhook header_name and header_value fields
+
+---
+ src/config.py                             |  5 +++++
+ src/main.py                               |  3 +++
+ src/models/models.py                      |  4 ++++
+ src/routes/settings.py                    | 23 +++++++++++++++++++++++
+ src/services/webhook.py                   | 18 ++++++++++++++++++
+ frontend/src/components/SettingsView.jsx  | 38 ++++++++++++++++++++++++++++++++++
+ migrations/versions/add_webhook_header_columns.py | 20 +++++++++++++++++++
+ 7 files changed, 111 insertions(+)
+ create mode 100644 src/config.py
+ create mode 100644 src/routes/settings.py
+ create mode 100644 src/services/webhook.py
+ create mode 100644 frontend/src/components/SettingsView.jsx
+ create mode 100644 migrations/versions/add_webhook_header_columns.py
+
+diff --git a/src/config.py b/src/config.py
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/src/config.py
+@@
++import os
++
++class Config:
++    WEBHOOK_API_KEY = os.getenv("WEBHOOK_API_KEY")
++
+diff --git a/src/main.py b/src/main.py
+index abcdef0..abcdef1 100644
+@@
++from dotenv import load_dotenv
++load_dotenv()
++app.config.from_object("config.Config")
+diff --git a/src/models/models.py b/src/models/models.py
+index abcdef1..abcdef2 100644
+@@
+ class WebhookConfig(db.Model):
+     __tablename__ = 'webhook_config'
+     id = db.Column(db.Integer, primary_key=True)
+     url = db.Column(db.String, nullable=False)
++    header_name  = db.Column(db.String, nullable=True)
++    header_value = db.Column(db.String, nullable=True)
+
+diff --git a/src/routes/settings.py b/src/routes/settings.py
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/src/routes/settings.py
+@@
++from flask import Blueprint, request, jsonify
++from src.models.models import db, WebhookConfig
++
++bp = Blueprint('settings', __name__)
++
++@bp.route('/settings/webhook', methods=['GET', 'POST'])
++def webhook_settings():
++    if request.method == 'GET':
++        cfg = WebhookConfig.query.first() or WebhookConfig()
++        return jsonify({
++            'url': cfg.url,
++            'header_name': cfg.header_name,
++            'header_value': cfg.header_value
++        })
++
++    data = request.get_json()
++    cfg = WebhookConfig.query.first() or WebhookConfig()
++    cfg.url = data.get('url')
++    cfg.header_name = data.get('header_name')
++    cfg.header_value = data.get('header_value')
++    db.session.add(cfg)
++    db.session.commit()
++    return jsonify({'status': 'success'})
+
+diff --git a/src/services/webhook.py b/src/services/webhook.py
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/src/services/webhook.py
+@@
++import requests
++from flask import current_app
++
++def fire_webhook(config, payload):
++    headers = {}
++
++    if config.header_name and config.header_value:
++        headers[config.header_name] = config.header_value
++
++    api_key = current_app.config.get('WEBHOOK_API_KEY')
++    if api_key:
++        headers['Authorization'] = f"Bearer {api_key}"
++
++    response = requests.post(config.url, json=payload, headers=headers)
++    response.raise_for_status()
++    return response.json()
+
+diff --git a/frontend/src/components/SettingsView.jsx b/frontend/src/components/SettingsView.jsx
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/frontend/src/components/SettingsView.jsx
+@@
++import React, { useState, useEffect } from 'react';
++import axios from 'axios';
++
++export default function SettingsView() {
++  const [config, setConfig] = useState({
++    url: '',
++    header_name: '',
++    header_value: ''
++  });
++
++  useEffect(() => {
++    axios.get('/settings/webhook').then(res => {
++      setConfig(res.data);
++    });
++  }, []);
++
++  const saveSettings = async () => {
++    try {
++      await axios.post('/settings/webhook', config);
++      alert('Settings saved successfully!');
++    } catch (err) {
++      console.error('Failed to save settings:', err);
++    }
++  };
++
++  return (
++    <form onSubmit={e => { e.preventDefault(); saveSettings(); }}>
++      <label>Webhook URL</label>
++      <input
++        type="text"
++        value={config.url}
++        onChange={e => setConfig({ ...config, url: e.target.value })}
++      />
++      <label>Header Name</label>
++      <input
++        type="text"
++        value={config.header_name}
++        onChange={e => setConfig({ ...config, header_name: e.target.value })}
++      />
++      <label>Header Value</label>
++      <input
++        type="text"
++        value={config.header_value}
++        onChange={e => setConfig({ ...config, header_value: e.target.value })}
++      />
++      <button type="submit">Save Settings</button>
++    </form>
++  );
++}
+
+diff --git a/migrations/versions/add_webhook_header_columns.py b/migrations/versions/add_webhook_header_columns.py
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/migrations/versions/add_webhook_header_columns.py
+@@
++from alembic import op
++import sqlalchemy as sa
++
++revision = 'add_headers_20250731'
++down_revision = None
++branch_labels = None
++depends_on = None
++
++def upgrade():
++    op.add_column('webhook_config', sa.Column('header_name', sa.String(), nullable=True))
++    op.add_column('webhook_config', sa.Column('header_value', sa.String(), nullable=True))
++
++def downgrade():
++    op.drop_column('webhook_config', 'header_value')
++    op.drop_column('webhook_config', 'header_name')
