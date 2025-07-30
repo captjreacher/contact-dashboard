@@ -28,8 +28,8 @@ EXPOSE 5000
 # Define environment variable
 ENV FLASK_APP=src/main.py
 
-# Run app.py when the container launches
-CMD ["sh", "-c", "flask db upgrade && flask run --host=0.0.0.0"]
+# Run the entrypoint script
+ENTRYPOINT ["./entrypoint.sh"]
 
 
 
