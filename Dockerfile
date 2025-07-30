@@ -16,6 +16,9 @@ COPY entrypoint.sh .
 # Make the entrypoint script executable
 RUN chmod +x entrypoint.sh
 
+# Convert CRLF to LF for shell scripts
+RUN sed -i 's/\r$//' entrypoint.sh && sed -i 's/\r$//' reset_and_run.sh
+
 # Copy the rest of the application's code into the container at /app
 COPY . .
 
@@ -28,8 +31,8 @@ EXPOSE 5000
 # Define environment variable
 ENV FLASK_APP=src/main.py
 
-# Run app.py when the container launches
-CMD ["sh", "-c", "flask db upgrade && flask run --host=0.0.0.0"]
+# Run the entrypoint script
+ENTRYPOINT ["./entrypoint.sh"]
 
 
 
