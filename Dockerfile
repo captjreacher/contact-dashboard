@@ -16,6 +16,9 @@ COPY entrypoint.sh .
 # Make the entrypoint script executable
 RUN chmod +x entrypoint.sh
 
+# Convert CRLF to LF for shell scripts
+RUN sed -i 's/\r$//' entrypoint.sh && sed -i 's/\r$//' reset_and_run.sh
+
 # Copy the rest of the application's code into the container at /app
 COPY . .
 
