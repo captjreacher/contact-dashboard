@@ -18,7 +18,6 @@ RUN chmod +x entrypoint.sh
 
 # Convert CRLF to LF for the entrypoint script
 RUN sed -i 's/\r$//' entrypoint.sh
-
 # Copy the rest of the application's code into the container at /app
 COPY . .
 
