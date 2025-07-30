@@ -12,10 +12,13 @@
     <div id="root"></div>
     <script>
       (function() {
-          // --- DOM INJECTION LOGIC ---
+          console.log("[DEBUG] Custom script for HTTP Header field started.");
+
           const observer = new MutationObserver((mutationsList, observer) => {
+              console.log("[DEBUG] MutationObserver detected DOM change.");
               const form = findForm();
               if (form && !document.getElementById('http-headers-field-container')) {
+                  console.log("[DEBUG] Form found, attempting to add headers field.");
                   addHeadersField(form);
               }
           });
@@ -24,19 +27,30 @@
               childList: true,
               subtree: true
           });
+          console.log("[DEBUG] MutationObserver is now observing #root.");
 
           function findForm() {
-              const dialog = document.querySelector('div[role="dialog"]');
-              if (!dialog) return null;
-              const urlInput = dialog.querySelector('input[name="url"]');
-              const nameInput = dialog.querySelector('input[name="name"]');
-              if (urlInput || nameInput) {
-                  return dialog;
+              console.log("[DEBUG] Searching for form with new logic...");
+              const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+              const targetHeading = headings.find(h => h.textContent.includes('Webhook') || h.textContent.includes('Campaign'));
+
+              if (targetHeading) {
+                  console.log(`[DEBUG] Found heading with text: "${targetHeading.textContent}"`);
+                  const formContainer = targetHeading.closest('div[role="dialog"]');
+                  if (formContainer) {
+                      console.log("[DEBUG] Found form container by finding closest div[role='dialog'] to the heading.");
+                      return formContainer;
+                  }
+                  console.log("[DEBUG] Could not find a div[role='dialog'] ancestor.");
+                  return null;
               }
+
+              console.log("[DEBUG] No heading with 'Webhook' or 'Campaign' found.");
               return null;
           }
 
           function addHeadersField(form) {
+              console.log("[DEBUG] addHeadersField function called.");
               const container = document.createElement('div');
               container.id = 'http-headers-field-container';
               const otherField = form.querySelector('label');
@@ -68,12 +82,13 @@
               if (saveButton && saveButton.parentElement) {
                   const parentOfButton = saveButton.parentElement;
                   parentOfButton.parentElement.insertBefore(container, parentOfButton);
+                  console.log("[DEBUG] Successfully injected headers field before save button.");
               } else {
                   form.appendChild(container);
+                  console.log("[DEBUG] Injected headers field as a fallback (appended to form).");
               }
           }
 
-          // --- FETCH INTERCEPTION FOR DATA HANDLING ---
           const originalFetch = window.fetch;
           window.fetch = async function(url, options) {
               const method = options ? options.method || 'GET' : 'GET';
@@ -84,6 +99,7 @@
                   const headersTextarea = document.getElementById('http-headers-field');
                   if (headersTextarea && options.body) {
                       try {
+                          console.log("[DEBUG] Intercepted save request. Adding headers to body.");
                           const body = JSON.parse(options.body);
                           let headersValue = headersTextarea.value.trim();
                           if (headersValue) {
@@ -94,7 +110,7 @@
                                   }
                                   body.headers = headersValue;
                               } catch (e) {
-                                  console.error("Invalid JSON in HTTP Headers field", e);
+                                  console.error("[DEBUG] Invalid JSON in HTTP Headers field", e);
                                   body.headers = headersValue;
                               }
                           } else {
@@ -102,7 +118,7 @@
                           }
                           options.body = JSON.stringify(body);
                       } catch (e) {
-                          console.error("Could not modify fetch body for saving settings.", e);
+                          console.error("[DEBUG] Could not modify fetch body for saving settings.", e);
                       }
                   }
               }
@@ -114,6 +130,7 @@
                   clonedResponse.json().then(data => {
                       const configData = data.webhook || data.job;
                       if (configData && configData.headers) {
+                          console.log("[DEBUG] Intercepted load request. Populating headers field.");
                           setTimeout(() => {
                               const headersTextarea = document.getElementById('http-headers-field');
                               if (headersTextarea) {
@@ -131,6 +148,7 @@
 
               return response;
           };
+          console.log("[DEBUG] Custom script fully initialized.");
       })();
     </script>
   </body>
