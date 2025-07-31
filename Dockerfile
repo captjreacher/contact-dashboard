@@ -16,6 +16,7 @@ COPY entrypoint.sh start.sh
 # Make the start script executable
 RUN chmod +x start.sh
 
+
 # Copy the rest of the application's code into the container at /app
 COPY . .
 
