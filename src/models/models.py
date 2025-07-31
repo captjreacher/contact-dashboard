@@ -454,8 +454,9 @@ class AuditLog(db.Model):
             
         db.session.add(log_entry)
         return log_entry
- class VerificationJob:
+class VerificationJob(db.Model):
     __tablename__ = 'verification_jobs'
+
     job_id = db.Column(db.String(36), primary_key=True)
     contact_ids = db.Column(db.Text)  # JSON string of contact IDs
     webhook_config_id = db.Column(db.String(36), db.ForeignKey('webhook_configs.webhook_id'))
@@ -474,6 +475,7 @@ class AuditLog(db.Model):
             'created_timestamp': self.created_timestamp.isoformat() if self.created_timestamp else None,
             'completed_timestamp': self.completed_timestamp.isoformat() if self.completed_timestamp else None
         }
+
 
 class CampaignExecution(db.Model):
     __tablename__ = 'campaign_executions'
