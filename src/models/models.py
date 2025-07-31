@@ -454,8 +454,51 @@ class AuditLog(db.Model):
             
         db.session.add(log_entry)
         return log_entry
+    class VerificationJob(db.Model):
+    __tablename__ = 'verification_jobs'
 
+    job_id = db.Column(db.String(36), primary_key=True)
+    contact_ids = db.Column(db.Text)  # JSON string of contact IDs
+    webhook_config_id = db.Column(db.String(36), db.ForeignKey('webhook_configs.webhook_id'))
+    status = db.Column(db.Enum('pending', 'processing', 'completed', 'failed', name='verification_job_status_enum'), default='pending', index=True)
+    error_message = db.Column(db.Text)
+    created_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_timestamp = db.Column(db.DateTime)
 
+    def to_dict(self):
+        return {
+            'job_id': self.job_id,
+            'contact_ids': json.loads(self.contact_ids) if self.contact_ids else [],
+            'webhook_config_id': self.webhook_config_id,
+            'status': self.status,
+            'error_message': self.error_message,
+            'created_timestamp': self.created_timestamp.isoformat() if self.created_timestamp else None,
+            'completed_timestamp': self.completed_timestamp.isoformat() if self.completed_timestamp else None
+        }
+
+class CampaignExecution(db.Model):
+    __tablename__ = 'campaign_executions'
+
+    execution_id = db.Column(db.String(36), primary_key=True)
+    campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.campaign_id'), nullable=False, index=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('campaign_jobs.job_id'), nullable=False, index=True)
+    contact_ids = db.Column(db.Text)  # JSON string of contact IDs
+    status = db.Column(db.Enum('pending', 'processing', 'completed', 'failed', name='campaign_execution_status_enum'), default='pending', index=True)
+    error_message = db.Column(db.Text)
+    created_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_timestamp = db.Column(db.DateTime)
+
+    def to_dict(self):
+        return {
+            'execution_id': self.execution_id,
+            'campaign_id': self.campaign_id,
+            'job_id': self.job_id,
+            'contact_ids': json.loads(self.contact_ids) if self.contact_ids else [],
+            'status': self.status,
+            'error_message': self.error_message,
+            'created_timestamp': self.created_timestamp.isoformat() if self.created_timestamp else None,
+            'completed_timestamp': self.completed_timestamp.isoformat() if self.completed_timestamp else None
+        }
 # Add relationships after all models are defined
 Contact.campaign_results = db.relationship('CampaignResult', backref='contact', lazy=True)
 Contact.sample_requests = db.relationship('SampleRequest', backref='contact', lazy=True)

@@ -7,8 +7,7 @@ from datetime import datetime
 from src.models.models import db
 from src.models.models import Contact
 from src.models.models import Campaign, CampaignResult
-from src.models.models import SampleRequest, AuditLog
-from src.models.webhook_config import VerificationJob, CampaignExecution
+from src.models.models import SampleRequest, AuditLog, VerificationJob, CampaignExecution
 
 webhooks_bp = Blueprint('webhooks', __name__)
 

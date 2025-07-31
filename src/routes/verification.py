@@ -3,8 +3,8 @@ import uuid
 import json
 import requests
 from datetime import datetime
-from src.models.models import db, Contact
-from src.models.webhook_config import WebhookConfig, VerificationJob
+from src.models.models import db, Contact, VerificationJob
+from src.models.webhook_config import WebhookConfig
 
 verification_bp = Blueprint('verification', __name__)
 
