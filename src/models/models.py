@@ -454,9 +454,8 @@ class AuditLog(db.Model):
             
         db.session.add(log_entry)
         return log_entry
-    class VerificationJob(db.Model):
+ class VerificationJob:
     __tablename__ = 'verification_jobs'
-
     job_id = db.Column(db.String(36), primary_key=True)
     contact_ids = db.Column(db.Text)  # JSON string of contact IDs
     webhook_config_id = db.Column(db.String(36), db.ForeignKey('webhook_configs.webhook_id'))
