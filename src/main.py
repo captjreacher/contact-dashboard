@@ -7,7 +7,7 @@ from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_migrate import Migrate
 from src.models.models import db, Contact, UploadBatch, ValidationRule, Campaign, CampaignResult, CampaignJob, SampleRequest, AuditLog
-from src.models.webhook_config import WebhookConfig, VerificationJob, CampaignExecution
+from src.models.webhook_config import WebhookConfig
 from src.routes.user import user_bp
 from src.routes.upload import upload_bp
 from src.routes.contacts import contacts_bp
