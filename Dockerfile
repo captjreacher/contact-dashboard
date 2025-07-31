@@ -32,5 +32,3 @@ ENV FLASK_APP=src/main.py
 # Run the start script
 ENTRYPOINT ["/bin/sh", "./start.sh"]
 
-
-
