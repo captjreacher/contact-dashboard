@@ -1,6 +1,6 @@
 import os
 import sys
-# DON\'T CHANGE THIS !!!
+# DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from flask import Flask, send_from_directory
@@ -36,7 +36,7 @@ app.register_blueprint(settings_bp, url_prefix='/api/settings')
 app.register_blueprint(verification_bp, url_prefix='/api/verification')
 
 # Database configuration
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "database", "app.db")
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:////" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "database", "app.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 migrate = Migrate(app, db)
@@ -70,5 +70,3 @@ def serve(path):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-
-
