@@ -4,31 +4,27 @@ FROM python:3.11-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements file into the container at /app
+# Copy the requirements file into the container and install dependencies
 COPY requirements.txt .
-
-# Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy and rename the entrypoint script
-COPY entrypoint.sh start.sh
-
-# Make the start script executable
-RUN chmod +x start.sh
-
-
-# Copy the rest of the application's code into the container at /app
+# Copy the rest of the application's code into the container
 COPY . .
 
 # Create and set permissions for the uploads directory
 RUN mkdir -p /app/src/uploads && chmod -R 777 /app/src/uploads
+RUN chmod -R a+w /app/database
 
-# Make port 5000 available to the world outside this container
+# Copy the entrypoint script and ensure it's executable
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+# Expose port 5000 for the Flask app
 EXPOSE 5000
 
-# Define environment variable
+# Set the Flask app environment variable
 ENV FLASK_APP=src/main.py
 
-# Run the start script
-ENTRYPOINT ["/bin/sh", "./start.sh"]
-
+# Use the start script as the container entrypoint
+RUN ls -lah /start.sh
+ENTRYPOINT ["/start.sh"]

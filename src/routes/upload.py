@@ -1,16 +1,15 @@
-from flask import Blueprint, request, jsonify, current_app
-import pandas as pd
-import uuid
 import os
-import re
-from datetime import datetime
+import uuid
+import pandas as pd
+from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
-from src.models.models import db
-from src.models.models import Contact, UploadBatch, ValidationRule
-from src.models.models import AuditLog
-import json
+from src.models.models import db, Contact, UploadBatch  # Adjust if needed
 
 upload_bp = Blueprint('upload', __name__)
+
+# === 🔽 STEP 1.1: Define your upload directory ===
+UPLOAD_DIR = os.path.join(os.getcwd(), 'uploads')
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls'}
 
@@ -199,17 +198,94 @@ def process_spreadsheet(file_path, batch_id, validation_rules=None):
 @upload_bp.route('/upload', methods=['POST'])
 def upload_file():
     """Upload and process contact spreadsheet"""
+    import traceback
     batch_id = str(uuid.uuid4())
+
     try:
+        print(f"[UPLOAD] Initiated. Batch ID: {batch_id}")
+
+        # Check if the request contains a file
         if 'file' not in request.files:
+            print("[UPLOAD] No file part in request.")
             return jsonify({'success': False, 'error': 'No file provided'}), 400
-        
+
         file = request.files['file']
+
+        # Check if a file was actually selected
         if file.filename == '':
+            print("[UPLOAD] Empty filename received.")
             return jsonify({'success': False, 'error': 'No file selected'}), 400
-        
+
+        # Validate file extension
         if not allowed_file(file.filename):
-            return jsonify({'success': False, 'error': 'Invalid file type. Please upload CSV or Excel files.'}), 400
+            print(f"[UPLOAD] Invalid file type: {file.filename}")
+            return jsonify({
+                'success': False,
+                'error': 'Invalid file type. Please upload CSV or Excel files.'
+            }), 400
+        # Save the file to a temporary location
+        import tempfile
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[-1]) as temp_file:
+                file.save(temp_file)
+                temp_path = temp_file.name
+                print(f"[UPLOAD] File saved temporarily to: {temp_path}")
+        except Exception as e:
+            print("[UPLOAD] Failed to save file temporarily:", str(e))
+            return jsonify({'success': False, 'error': 'Failed to save uploaded file.'}), 500
+
+        # Parse the file using pandas
+        import pandas as pd
+        try:
+            if file.filename.endswith('.csv'):
+                df = pd.read_csv(temp_path)
+            else:
+                df = pd.read_excel(temp_path)
+        except Exception as e:
+            print("[UPLOAD] Failed to parse file with pandas:", str(e))
+            return jsonify({'success': False, 'error': 'Error parsing file content.'}), 400
+
+        # Now insert into database
+        contacts_added = 0
+        for index, row in df.iterrows():
+            try:
+                email = row.get('email', '').strip()
+                name = row.get('name', '').strip() or "Unnamed"
+                phone = row.get('phone', '').strip()
+
+                if not validate_email(email):
+                    print(f"[UPLOAD] Invalid email format at row {index + 1}: {email}")
+                    continue
+
+                contact = Contact(
+                    name=name,
+                    email=email,
+                    phone=phone,
+                    batch_id=batch_id
+                )
+
+                db.session.add(contact)
+                contacts_added += 1
+
+            except Exception as row_err:
+                print(f"[UPLOAD] Error processing row {index + 1}: {row_err}")
+
+        db.session.commit()
+        print(f"[UPLOAD] {contacts_added} contacts saved to database.")
+
+        return jsonify({'success': True, 'message': f'{contacts_added} contacts uploaded successfully', 'batch_id': batch_id}), 200
+
+        # You would continue processing the file here (e.g., parsing, saving, etc.)
+        print(f"[UPLOAD] File '{file.filename}' accepted for processing.")
+
+        return jsonify({'success': True, 'batch_id': batch_id}), 200
+
+    except Exception as e:
+        print("[UPLOAD] Exception occurred:", e)
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': 'Server error occurred during upload.'}), 500
+
         
         # Save file
         filename = secure_filename(file.filename)
@@ -271,28 +347,41 @@ def upload_file():
 
 @upload_bp.route('/upload/<batch_id>/status', methods=['GET'])
 def get_upload_status(batch_id):
-    """Get processing status of uploaded file"""
+    """Return the current processing status of a given upload batch."""
     try:
-        batch = UploadBatch.query.get(batch_id)
-        if not batch:
-            return jsonify({'success': False, 'error': 'Batch not found'}), 404
+        print(f"[STATUS] Fetching status for batch ID: {batch_id}")
         
-        return jsonify({
+        batch = UploadBatch.query.get(batch_id)
+        if batch is None:
+            print(f"[STATUS] Batch not found: {batch_id}")
+            return jsonify({'success': False, 'error': 'Batch not found'}), 404
+
+        response = {
+            'success': True,
             'batch_id': batch_id,
             'status': batch.processing_status,
             'progress': {
-                'total_records': batch.total_records,
-                'processed_records': batch.total_records,  # Since we process synchronously
-                'valid_records': batch.valid_records,
-                'invalid_records': batch.invalid_records,
-                'duplicate_records': batch.duplicate_records
+                'total_records': batch.total_records or 0,
+                'processed_records': batch.total_records or 0,  # Adjust if async in future
+                'valid_records': batch.valid_records or 0,
+                'invalid_records': batch.invalid_records or 0,
+                'duplicate_records': batch.duplicate_records or 0
             },
             'validation_summary': {
-                'email_format_errors': 0,  # TODO: Calculate from validation errors
+                'email_format_errors': 0,              # TODO: Pull from validation log if exists
                 'missing_required_fields': 0,
                 'phone_format_errors': 0
             }
-        })
+        }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        print(f"[STATUS][ERROR] Exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

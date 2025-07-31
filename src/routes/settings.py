@@ -32,29 +32,35 @@ def create_webhook():
             return jsonify({'error': 'Webhook URL is required'}), 400
         if not data.get('webhook_type'):
             return jsonify({'error': 'Webhook type is required'}), 400
-        
+
         # Validate webhook type
         if data['webhook_type'] not in ['verification', 'campaign']:
             return jsonify({'error': 'Invalid webhook type'}), 400
-        
+
         # Validate JSON fields if provided
         if data.get('input_fields'):
             try:
                 json.loads(data['input_fields'])
             except json.JSONDecodeError:
                 return jsonify({'error': 'Invalid JSON format for input fields'}), 400
-        
+
         if data.get('output_fields'):
             try:
                 json.loads(data['output_fields'])
             except json.JSONDecodeError:
                 return jsonify({'error': 'Invalid JSON format for output fields'}), 400
-        
+
         if data.get('headers'):
             try:
                 json.loads(data['headers'])
             except json.JSONDecodeError:
                 return jsonify({'error': 'Invalid JSON format for headers'}), 400
+
+        # Validate new header fields
+        if 'header_name' in data and not isinstance(data['header_name'], str):
+            return jsonify({'error': 'Header name must be a string'}), 400
+        if 'header_value' in data and not isinstance(data['header_value'], str):
+            return jsonify({'error': 'Header value must be a string'}), 400
 
         webhook = WebhookConfig(
             webhook_id=str(uuid.uuid4()),
@@ -65,17 +71,19 @@ def create_webhook():
             input_fields=data.get('input_fields', ''),
             output_fields=data.get('output_fields', ''),
             headers=data.get('headers', ''),
+            header_name=data.get('header_name'),
+            header_value=data.get('header_value'),
             is_active=data.get('is_active', True)
         )
-        
+
         db.session.add(webhook)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'webhook': webhook.to_dict()
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -87,22 +95,22 @@ def update_webhook(webhook_id):
         webhook = WebhookConfig.query.get(webhook_id)
         if not webhook:
             return jsonify({'error': 'Webhook not found'}), 404
-        
+
         data = request.get_json()
-        
+
         # Validate JSON fields if provided
         if data.get('input_fields'):
             try:
                 json.loads(data['input_fields'])
             except json.JSONDecodeError:
                 return jsonify({'error': 'Invalid JSON format for input fields'}), 400
-        
+
         if data.get('output_fields'):
             try:
                 json.loads(data['output_fields'])
             except json.JSONDecodeError:
                 return jsonify({'error': 'Invalid JSON format for output fields'}), 400
-        
+
         if data.get('headers'):
             try:
                 json.loads(data['headers'])
@@ -126,17 +134,21 @@ def update_webhook(webhook_id):
             webhook.output_fields = data['output_fields']
         if 'headers' in data:
             webhook.headers = data['headers']
+        if 'header_name' in data:
+            webhook.header_name = data['header_name']
+        if 'header_value' in data:
+            webhook.header_value = data['header_value']
         if 'is_active' in data:
             webhook.is_active = data['is_active']
-        
+
         webhook.updated_timestamp = datetime.utcnow()
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'webhook': webhook.to_dict()
         })
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -148,12 +160,12 @@ def delete_webhook(webhook_id):
         webhook = WebhookConfig.query.get(webhook_id)
         if not webhook:
             return jsonify({'error': 'Webhook not found'}), 404
-        
+
         db.session.delete(webhook)
         db.session.commit()
-        
+
         return jsonify({'success': True})
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -175,26 +187,26 @@ def create_campaign_job():
     """Create a new campaign job configuration"""
     try:
         data = request.get_json()
-        
+
         # Validate required fields
         if not data.get('name'):
             return jsonify({'error': 'Job name is required'}), 400
         if not data.get('webhook_url'):
             return jsonify({'error': 'Webhook URL is required'}), 400
-        
+
         # Validate JSON fields if provided
         if data.get('input_fields'):
             try:
                 json.loads(data['input_fields'])
             except json.JSONDecodeError:
                 return jsonify({'error': 'Invalid JSON format for input fields'}), 400
-        
+
         if data.get('output_fields'):
             try:
                 json.loads(data['output_fields'])
             except json.JSONDecodeError:
                 return jsonify({'error': 'Invalid JSON format for output fields'}), 400
-        
+
         if data.get('headers'):
             try:
                 json.loads(data['headers'])
@@ -211,15 +223,15 @@ def create_campaign_job():
             headers=data.get('headers', ''),
             is_active=data.get('is_active', True)
         )
-        
+
         db.session.add(job)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'job': job.to_dict()
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -231,22 +243,22 @@ def update_campaign_job(job_id):
         job = CampaignJob.query.get(job_id)
         if not job:
             return jsonify({'error': 'Campaign job not found'}), 404
-        
+
         data = request.get_json()
-        
+
         # Validate JSON fields if provided
         if data.get('input_fields'):
             try:
                 json.loads(data['input_fields'])
             except json.JSONDecodeError:
                 return jsonify({'error': 'Invalid JSON format for input fields'}), 400
-        
+
         if data.get('output_fields'):
             try:
                 json.loads(data['output_fields'])
             except json.JSONDecodeError:
                 return jsonify({'error': 'Invalid JSON format for output fields'}), 400
-        
+
         if data.get('headers'):
             try:
                 json.loads(data['headers'])
@@ -268,15 +280,15 @@ def update_campaign_job(job_id):
             job.headers = data['headers']
         if 'is_active' in data:
             job.is_active = data['is_active']
-        
+
         job.updated_timestamp = datetime.utcnow()
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'job': job.to_dict()
         })
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -288,13 +300,12 @@ def delete_campaign_job(job_id):
         job = CampaignJob.query.get(job_id)
         if not job:
             return jsonify({'error': 'Campaign job not found'}), 404
-        
+
         db.session.delete(job)
         db.session.commit()
-        
+
         return jsonify({'success': True})
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
-

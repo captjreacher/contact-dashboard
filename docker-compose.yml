@@ -1,12 +1,42 @@
-version: '3.8'
+version: "3.9"  # Optional but can be removed per Docker's warning
 
 services:
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: contact-dashboard-web
+    command: flask run --host=0.0.0.0  # Use Flask dev server for debug
     ports:
       - "5000:5000"
     volumes:
-      - ./data/db:/app/database
+      - .:/app  # Sync local files with container
     environment:
-      - WEBHOOK_API_KEY=${WEBHOOK_API_KEY}
+      FLASK_APP: src/main.py
+      FLASK_ENV: development  # Enables debug mode
+      WEBHOOK_API_KEY: supersecretkey  # Replace with your actual value
+    depends_on:
+      - db
+    networks:
+      - contact-dashboard-net
+
+  db:
+    image: postgres:15
+    container_name: contact-dashboard-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: contactdashboard
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - contact-dashboard-net
+
+networks:
+  contact-dashboard-net:
+
+volumes:
+  pgdata:
+
 

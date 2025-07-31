@@ -1,1 +1,56 @@
-database/
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# SQLite database
+*.sqlite
+*.sqlite3
+database/app.db
+
+# Alembic / Flask-Migrate artifacts
+migrations/
+*.log
+
+# Environment
+.env
+.env.*
+.venv/
+venv/
+ENV/
+env/
+
+# VS Code / IDE files
+.vscode/
+.idea/
+
+# MacOS / Windows / Linux system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test outputs / coverage
+*.cover
+coverage.xml
+*.pid
+*.prof
+*.log
+
+# Docker leftovers
+*.tar
+docker-compose.override.yml
+
+# Anything pip installs
+*.egg-info/
+dist/
+build/
+
+# Node (if ever used in frontend)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Bash history or other interactive she
