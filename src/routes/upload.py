@@ -1,3 +1,5 @@
+import re
+import json
 import os
 import uuid
 import pandas as pd
@@ -154,6 +156,52 @@ def process_spreadsheet(file_path, batch_id, validation_rules=None):
                 company_name=validated_row.get('company_name'),
                 job_title=validated_row.get('job_title'),
                 address_line1=validated_row.get('address_line1'),
+            )
+        
+        # Map columns to standard names
+        for standard_name, possible_names in required_columns.items():
+            for col in df.columns:
+                if col in possible_names:
+                    df.rename(columns={col: standard_name}, inplace=True)
+                    break
+        
+        total_records = len(df)
+        valid_records = 0
+        invalid_records = 0
+        duplicate_records = 0
+        
+        # Detect duplicates
+        duplicates_df = detect_duplicates(df)
+        duplicate_emails = set(duplicates_df['email_lower'].tolist())
+        
+        # Process each row
+        for index, row in df.iterrows():
+            errors, validated_row = validate_contact_data(row.to_dict())
+            
+            # Check if duplicate
+            is_duplicate = row['email_address'].lower() in duplicate_emails
+            
+            if is_duplicate:
+                validation_status = 'duplicate'
+                duplicate_records += 1
+            elif errors:
+                validation_status = 'invalid'
+                invalid_records += 1
+            else:
+                validation_status = 'valid'
+                valid_records += 1
+            
+            # Create contact record
+            contact = Contact(
+                upload_batch_id=batch_id,
+                row_number=index + 2,  # Adding 2 to account for header and 0-based index
+                first_name=validated_row.get('first_name', '').strip(),
+                last_name=validated_row.get('last_name', '').strip(),
+                email_address=validated_row.get('email_address', '').strip().lower(),
+                phone_number=validated_row.get('phone_number'),
+                company_name=validated_row.get('company_name'),
+                job_title=validated_row.get('job_title'),
+                address_line1=validated_row.get('address_line1'),
                 address_line2=validated_row.get('address_line2'),
                 city=validated_row.get('city'),
                 state_province=validated_row.get('state_province'),
@@ -182,23 +230,35 @@ def process_spreadsheet(file_path, batch_id, validation_rules=None):
             'invalid_records': invalid_records,
             'duplicate_records': duplicate_records
         }
-        
     except Exception as e:
-        # Update batch with error
+        import traceback
+        tb = traceback.format_exc()
+        print(tb)
+        try:
+            with open("/tmp/flask_error.txt", "a") as f:
+                f.write(tb + "\n")
+        except Exception as file_err:
+            print(f"Could not write error log file: {file_err}")
         batch = UploadBatch.query.get(batch_id)
-        batch.processing_status = 'failed'
-        batch.processing_errors = json.dumps([str(e)])
-        db.session.commit()
-        
+        if batch:
+            batch.processing_status = 'failed'
+            batch.processing_errors = json.dumps([str(e)])
+            db.session.commit()
         return {
             'success': False,
             'error': str(e)
         }
 
+
+
+
 @upload_bp.route('/upload', methods=['POST'])
 def upload_file():
     """Upload and process contact spreadsheet"""
     import traceback
+    import tempfile
+    import json
+
     batch_id = str(uuid.uuid4())
 
     try:
@@ -223,53 +283,62 @@ def upload_file():
                 'success': False,
                 'error': 'Invalid file type. Please upload CSV or Excel files.'
             }), 400
-        # Save the file to a temporary location
-        import tempfile
-        temp_path = None
-        try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[-1]) as temp_file:
-                file.save(temp_file)
-                temp_path = temp_file.name
-                print(f"[UPLOAD] File saved temporarily to: {temp_path}")
-        except Exception as e:
-            print("[UPLOAD] Failed to save file temporarily:", str(e))
-            return jsonify({'success': False, 'error': 'Failed to save uploaded file.'}), 500
 
-        # Parse the file using pandas
-        import pandas as pd
-        try:
-            if file.filename.endswith('.csv'):
-                df = pd.read_csv(temp_path)
-            else:
-                df = pd.read_excel(temp_path)
-        except Exception as e:
-            print("[UPLOAD] Failed to parse file with pandas:", str(e))
-            return jsonify({'success': False, 'error': 'Error parsing file content.'}), 400
+        # Save file to disk
+        filename = secure_filename(file.filename)
+        upload_folder = os.path.join(os.getcwd(), 'uploads')
+        os.makedirs(upload_folder, exist_ok=True)
+        file_path = os.path.join(upload_folder, f"{batch_id}_{filename}")
+        file.save(file_path)
 
-        # Now insert into database
-        contacts_added = 0
-        for index, row in df.iterrows():
-            try:
-                email = row.get('email', '').strip()
-                name = row.get('name', '').strip() or "Unnamed"
-                phone = row.get('phone', '').strip()
+        # Create batch record
+        batch = UploadBatch(
+            batch_id=batch_id,
+            filename=filename,
+            file_size=os.path.getsize(file_path),
+            total_records=0,  # Will be updated during processing
+            processing_status='processing',
+            uploaded_by='system'  # TODO: Replace with actual user/session
+        )
+        db.session.add(batch)
+        db.session.commit()
 
-                if not validate_email(email):
-                    print(f"[UPLOAD] Invalid email format at row {index + 1}: {email}")
-                    continue
+        # Process file (use your advanced logic)
+        result = process_spreadsheet(file_path, batch_id)
 
-                contact = Contact(
-                    name=name,
-                    email=email,
-                    phone=phone,
-                    batch_id=batch_id
-                )
+        # Clean up file
+        os.remove(file_path)
 
-                db.session.add(contact)
-                contacts_added += 1
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'batch_id': batch_id,
+                'processing_status': 'completed',
+                'total_records': result['total_records'],
+                'valid_records': result['valid_records'],
+                'invalid_records': result['invalid_records'],
+                'duplicate_records': result['duplicate_records']
+            }), 200
+        else:
+            batch = UploadBatch.query.get(batch_id)
+            return jsonify({
+                'success': False,
+                'batch_id': batch_id,
+                'error': 'Processing failed',
+                'processing_errors': json.loads(batch.processing_errors) if batch and batch.processing_errors else [result['error']]
+            }), 500
 
-            except Exception as row_err:
-                print(f"[UPLOAD] Error processing row {index + 1}: {row_err}")
+    except Exception as e:
+        print("[UPLOAD] Exception occurred:", e)
+        traceback.print_exc()
+        # Update batch with error
+        batch = UploadBatch.query.get(batch_id)
+        if batch:
+            batch.processing_status = 'failed'
+            batch.processing_errors = json.dumps([str(e)])
+            db.session.commit()
+        return jsonify({'success': False, 'batch_id': batch_id, 'error': str(e)}), 500
+
 
         db.session.commit()
         print(f"[UPLOAD] {contacts_added} contacts saved to database.")

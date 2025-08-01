@@ -6,7 +6,7 @@ from datetime import datetime
 from src.models.models import db
 from src.models.models import Contact
 from src.models.models import Campaign, CampaignResult, CampaignJob, SampleRequest, AuditLog, CampaignExecution
-from src.models.webhook_config import WebhookConfig
+from src.models import WebhookConfig
 campaigns_bp = Blueprint('campaigns', __name__)
 
 @campaigns_bp.route('/campaigns', methods=['GET'])

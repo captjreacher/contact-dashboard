@@ -320,6 +320,36 @@ class CampaignJob(db.Model):
         """Set job parameters"""
         self.job_parameters = json.dumps(parameters)
 
+class WebhookConfig(db.Model):
+    __tablename__ = 'webhook_configs'
+
+    webhook_id = db.Column(db.String(36), primary_key=True)
+    description = db.Column(db.String(255), nullable=True)
+    webhook_type = db.Column(db.String(255), nullable=False)
+    input_fields = db.Column(db.Text)  # JSON formatted input fields
+    output_fields = db.Column(db.Text)  # JSON formatted output fields
+    name = db.Column(db.String(255), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+    method = db.Column(db.String(10), default='POST')
+    headers = db.Column(db.Text)  # JSON formatted headers
+    header_name = db.Column(db.String(100), nullable=True)
+    header_value = db.Column(db.String(255), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_timestamp = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'webhook_id': self.webhook_id,
+            'name': self.name,
+            'url': self.url,
+            'method': self.method,
+            'header_name': self.header_name,
+            'header_value': self.header_value,
+            'is_active': self.is_active,
+            'created_timestamp': self.created_timestamp.isoformat() if self.created_timestamp else None,
+            'updated_timestamp': self.updated_timestamp.isoformat() if self.updated_timestamp else None,
+        }
 
 class SampleRequest(db.Model):
     __tablename__ = 'sample_requests'

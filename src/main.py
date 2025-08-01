@@ -8,7 +8,7 @@ from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_migrate import Migrate
 from src.models.models import db, Contact, UploadBatch, ValidationRule, Campaign, CampaignResult, CampaignJob, SampleRequest, AuditLog
-from src.models.webhook_config import WebhookConfig
+from src.models import WebhookConfig
 from src.routes.user import user_bp
 from src.routes.upload import upload_bp
 from src.routes.contacts import contacts_bp
@@ -48,6 +48,10 @@ app.register_blueprint(samples_bp, url_prefix='/api')
 app.register_blueprint(webhooks_bp, url_prefix='/api')
 app.register_blueprint(settings_bp, url_prefix='/api/settings')
 app.register_blueprint(verification_bp, url_prefix='/api/verification')
+
+# Import and register Notion blueprint
+from src.routes.notion import notion_bp
+app.register_blueprint(notion_bp)
 
 # Serve asset files
 @app.route('/assets/<path:filename>')
