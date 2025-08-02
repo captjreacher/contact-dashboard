@@ -4,10 +4,63 @@ from src.models.models import Contact, UploadBatch
 from src.models.models import AuditLog
 from datetime import datetime
 import json
+import uuid
 
 contacts_bp = Blueprint('contacts', __name__)
 
-@contacts_bp.route('/contacts', methods=['GET'])
+@contacts_bp.route('/contacts', methods=['GET', 'POST'])
+def handle_contacts():
+    if request.method == 'POST':
+        return create_contact()
+    return get_contacts()
+
+def create_contact():
+    """Create a new contact"""
+    try:
+        data = request.get_json()
+        if not data or not data.get('email_address') or not data.get('first_name') or not data.get('last_name'):
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+
+        # Check for existing contact with the same email
+        if Contact.query.filter_by(email_address=data['email_address'].lower().strip()).first():
+            return jsonify({'success': False, 'error': 'Contact with this email already exists'}), 409
+
+        new_contact = Contact(
+            first_name=data['first_name'],
+            last_name=data['last_name'],
+            email_address=data['email_address'].lower().strip(),
+            phone_number=data.get('phone_number'),
+            company_name=data.get('company_name'),
+            job_title=data.get('job_title'),
+            upload_batch_id=str(uuid.uuid4()),  # Assign a unique batch ID for manually added contacts
+            validation_status='valid', # Manually added contacts are considered valid
+            email_verification_status='not_verified'
+        )
+
+        db.session.add(new_contact)
+        db.session.commit()
+
+        # Log the creation
+        AuditLog.log_action(
+            user_id='system',  # TODO: Get from session
+            action_type='create',
+            table_name='contacts',
+            record_id=new_contact.contact_id,
+            new_values=new_contact.to_dict(),
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent')
+        )
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'contact': new_contact.to_dict()
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 def get_contacts():
     """Retrieve contacts with filtering and pagination"""
     try:

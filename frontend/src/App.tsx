@@ -1,30 +1,30 @@
 import React, { useState } from 'react';
-import AddEditWebhookModal from './AddEditWebhookModal';  // Adjust path if needed
+import ContactManager from './pages/ContactManager';
+import WebhookSettings from './pages/WebhookSettings';
+import './App.css';
 
-function App() {
-  const [modalOpen, setModalOpen] = useState(false);
+const App: React.FC = () => {
+  const [activeTab, setActiveTab] = useState('contacts');
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Contact Dashboard</h1>
-      <button onClick={() => setModalOpen(true)} style={{ marginBottom: 20 }}>
-        Open Webhook Modal
-      </button>
-
-      {modalOpen && (
-        <AddEditWebhookModal
-          onClose={() => setModalOpen(false)}
-          // Add props here as needed, e.g. editing webhook data
-        />
-      )}
+    <div className="App">
+      <header>
+        <h1>Lead & Webhook Management</h1>
+        <nav>
+          <button onClick={() => setActiveTab('contacts')} className={activeTab === 'contacts' ? 'active' : ''}>
+            Contact Manager
+          </button>
+          <button onClick={() => setActiveTab('webhooks')} className={activeTab === 'webhooks' ? 'active' : ''}>
+            Webhook Settings
+          </button>
+        </nav>
+      </header>
+      <main>
+        {activeTab === 'contacts' && <ContactManager />}
+        {activeTab === 'webhooks' && <WebhookSettings />}
+      </main>
     </div>
   );
-}
+};
 
 export default App;
-
-
-
-
-
-
