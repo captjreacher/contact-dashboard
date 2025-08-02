@@ -19,8 +19,8 @@ from src.routes.settings import settings_bp
 from src.routes.verification import verification_bp
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-# Initialize Flask app with static folder
-app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
+# Initialize Flask app with the correct static folder for the React build
+app = Flask(__name__, static_folder=os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'build'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 
@@ -52,11 +52,6 @@ app.register_blueprint(verification_bp, url_prefix='/api/verification')
 # Import and register Notion blueprint
 from src.routes.notion import notion_bp
 app.register_blueprint(notion_bp)
-
-# Serve asset files
-@app.route('/assets/<path:filename>')
-def serve_assets(filename):
-    return send_from_directory(os.path.join(app.static_folder, 'assets'), filename)
 
 # Catch-all route to serve index.html for front-end routing
 @app.route('/', defaults={'path': ''})
