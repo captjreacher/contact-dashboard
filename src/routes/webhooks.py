@@ -4,7 +4,10 @@ import json
 import hmac
 import hashlib
 from datetime import datetime
-from src.models.models import db, Contact, Campaign, CampaignResult, SampleRequest, AuditLog, VerificationJob, CampaignExecution
+from src.models.models import (
+    db, Contact, Campaign, CampaignResult, SampleRequest, AuditLog, 
+    VerificationJob, CampaignExecution, Webhook
+)
 
 webhooks_bp = Blueprint('webhooks', __name__)
 
@@ -13,40 +16,33 @@ def verify_webhook_signature(payload, signature, secret_key='webhook_secret'):
     if not signature:
         return False
     
-    # Calculate expected signature
     expected_signature = hmac.new(
         secret_key.encode('utf-8'),
         payload,
         hashlib.sha256
     ).hexdigest()
     
-    # Compare signatures securely
     return hmac.compare_digest(signature, expected_signature)
 
 @webhooks_bp.route("/verification-results", methods=["POST"])
 def receive_verification_results():
     """Receive email verification results from Make.com"""
     try:
-        # API Key authentication
         api_key = request.headers.get("X-API-Key")
         if not api_key or api_key != os.environ.get("WEBHOOK_API_KEY"):
             return jsonify({"success": False, "error": "Unauthorized: Invalid or missing API Key"}), 401
 
-        # Get raw payload for signature verification
         payload = request.get_data()
         signature = request.headers.get("X-Make-Signature")
         
-        # Verify signature (commented out for development)
+        # Signature verification (commented out for dev)
         # if not verify_webhook_signature(payload, signature):
         #     return jsonify({'success': False, 'error': 'Invalid signature'}), 401
         
-        # Parse JSON data
         data = request.get_json()
-        
         if not data:
             return jsonify({'success': False, 'error': 'No data provided'}), 400
         
-        # Validate required fields
         job_id = data.get('job_id')
         results = data.get('results', [])
         
@@ -56,22 +52,19 @@ def receive_verification_results():
         if not results:
             return jsonify({'success': False, 'error': 'No verification results provided'}), 400
         
-        # Find the verification job
         verification_job = VerificationJob.query.get(job_id)
         if not verification_job:
             return jsonify({'success': False, 'error': 'Verification job not found'}), 404
         
-        # Process verification results
         updated_contacts = 0
         for result in results:
             contact_id = result.get('contact_id')
-            status = result.get('status', 'unknown')  # valid, invalid, risky, unknown
+            status = result.get('status', 'unknown')
             details = result.get('details', {})
             
             if not contact_id:
                 continue
             
-            # Find and update the contact
             contact = Contact.query.get(contact_id)
             if contact:
                 contact.email_verification_status = status
@@ -80,11 +73,9 @@ def receive_verification_results():
                 contact.updated_timestamp = datetime.utcnow()
                 updated_contacts += 1
         
-        # Update verification job status
         verification_job.status = 'completed'
         verification_job.completed_timestamp = datetime.utcnow()
         
-        # Create audit log
         audit_log = AuditLog(
             action='verification_results_received',
             details=json.dumps({
@@ -95,7 +86,6 @@ def receive_verification_results():
             timestamp=datetime.utcnow()
         )
         db.session.add(audit_log)
-        
         db.session.commit()
         
         return jsonify({
@@ -113,30 +103,24 @@ def receive_verification_results():
 def receive_campaign_results():
     """Receive campaign results from Make.com"""
     try:
-        # API Key authentication
         api_key = request.headers.get("X-API-Key")
         if not api_key or api_key != os.environ.get("WEBHOOK_API_KEY"):
             return jsonify({"success": False, "error": "Unauthorized: Invalid or missing API Key"}), 401
 
-        # Get raw payload for signature verification
         payload = request.get_data()
         signature = request.headers.get("X-Make-Signature")
         
-        # Verify signature (commented out for development)
+        # Signature verification (commented out for dev)
         # if not verify_webhook_signature(payload, signature):
         #     return jsonify({'success': False, 'error': 'Invalid signature'}), 401
         
-        # Parse JSON data
         data = request.get_json()
-        
         if not data:
             return jsonify({'success': False, 'error': 'No data provided'}), 400
         
-        # Handle both single contact and batch results
         execution_id = data.get('execution_id')
         results = data.get('results', [])
         
-        # If single contact result, convert to list format
         if 'contact_id' in data and 'campaign_id' in data:
             results = [{
                 'contact_id': data['contact_id'],
@@ -149,12 +133,10 @@ def receive_campaign_results():
         if not results:
             return jsonify({'success': False, 'error': 'No campaign results provided'}), 400
         
-        # Find campaign execution if execution_id provided
         campaign_execution = None
         if execution_id:
             campaign_execution = CampaignExecution.query.get(execution_id)
         
-        # Process campaign results
         updated_contacts = 0
         for result in results:
             contact_id = result.get('contact_id')
@@ -166,16 +148,13 @@ def receive_campaign_results():
             if not contact_id or not campaign_id:
                 continue
             
-            # Find the contact and campaign
             contact = Contact.query.get(contact_id)
             campaign = Campaign.query.get(campaign_id)
             
             if not contact or not campaign:
                 continue
             
-            # Update contact campaign status
             if status == 'completed' and not error_code:
-                # Successful campaign
                 if result_date:
                     try:
                         date_obj = datetime.fromisoformat(result_date.replace('Z', '+00:00'))
@@ -187,16 +166,13 @@ def receive_campaign_results():
                 
                 contact.campaign_status = f"Campaign {campaign.name}: {formatted_date}"
             elif error_code:
-                # Campaign with error
                 contact.campaign_status = f"Campaign {campaign.name}: No result-{error_code}"
             else:
-                # Failed campaign
                 contact.campaign_status = f"Campaign {campaign.name}: No result"
             
             contact.updated_timestamp = datetime.utcnow()
             updated_contacts += 1
             
-            # Create or update campaign result record
             campaign_result = CampaignResult.query.filter_by(
                 campaign_id=campaign_id,
                 contact_id=contact_id
@@ -220,12 +196,10 @@ def receive_campaign_results():
                 except ValueError:
                     pass
         
-        # Update campaign execution status if found
         if campaign_execution:
             campaign_execution.status = 'completed'
             campaign_execution.completed_timestamp = datetime.utcnow()
         
-        # Create audit log
         audit_log = AuditLog(
             action='campaign_results_received',
             details=json.dumps({
@@ -249,3 +223,79 @@ def receive_campaign_results():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# --- New Webhook Management API ---
+
+@webhooks_bp.route('/api/settings/webhooks', methods=['GET'])
+def get_webhooks():
+    webhooks = Webhook.query.all()
+    result = []
+    for w in webhooks:
+        result.append({
+            'id': w.id,
+            'url': w.url,
+            'events': json.loads(w.events) if w.events else [],
+            'headers': w.headers or '{}'
+        })
+    return jsonify(success=True, webhooks=result)
+
+@webhooks_bp.route('/api/settings/webhooks', methods=['POST'])
+def create_webhook():
+    data = request.json
+    url = data.get('url')
+    events = data.get('events', [])
+    headers = data.get('headers', '{}')
+
+    if not url:
+        return jsonify(success=False, error='URL is required'), 400
+    try:
+        json.loads(headers)
+    except Exception:
+        return jsonify(success=False, error='Invalid JSON for headers'), 400
+
+    webhook = Webhook(
+        url=url,
+        events=json.dumps(events),
+        headers=headers
+    )
+    db.session.add(webhook)
+    db.session.commit()
+
+    return jsonify(success=True, webhook={
+        'id': webhook.id,
+        'url': webhook.url,
+        'events': events,
+        'headers': headers
+    }), 201
+
+@webhooks_bp.route('/api/settings/webhooks/<int:webhook_id>', methods=['PUT'])
+def update_webhook(webhook_id):
+    webhook = Webhook.query.get(webhook_id)
+    if not webhook:
+        return jsonify(success=False, error='Webhook not found'), 404
+
+    data = request.json
+    url = data.get('url')
+    events = data.get('events')
+    headers = data.get('headers')
+
+    if url:
+        webhook.url = url
+    if events is not None:
+        webhook.events = json.dumps(events)
+    if headers is not None:
+        try:
+            json.loads(headers)
+        except Exception:
+            return jsonify(success=False, error='Invalid JSON for headers'), 400
+        webhook.headers = headers
+
+    db.session.commit()
+
+    return jsonify(success=True, webhook={
+        'id': webhook.id,
+        'url': webhook.url,
+        'events': json.loads(webhook.events) if webhook.events else [],
+        'headers': webhook.headers or '{}'
+    })
+

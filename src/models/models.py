@@ -320,6 +320,20 @@ class CampaignJob(db.Model):
         """Set job parameters"""
         self.job_parameters = json.dumps(parameters)
 
+def upgrade():
+    op.create_table(
+        'webhooks',
+        sa.Column('id', sa.Integer, primary_key=True),
+        sa.Column('url', sa.String(500), nullable=False),
+        sa.Column('events', sa.Text),
+        sa.Column('headers', sa.Text),
+        sa.Column('created_timestamp', sa.DateTime, nullable=False),
+        sa.Column('updated_timestamp', sa.DateTime, nullable=False)
+    )
+
+def downgrade():
+    op.drop_table('webhooks')
+
 class WebhookConfig(db.Model):
     __tablename__ = 'webhook_configs'
 
